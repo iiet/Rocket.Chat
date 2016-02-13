@@ -6,6 +6,31 @@ Template.username.onCreated ->
 		self.username.set
 			ready: true
 			username: username
+#instant login
+		username = instance.username.get()
+                username.empty = false
+                username.error = false
+                username.invalid = false
+                instance.username.set(username)
+
+		button = $(event.target).find('button.login')
+                RocketChat.Button.loading(button)
+		
+		Meteor.call 'setUsername', value, (err, result) ->
+                        if err?
+                                console.log err
+                                if err.error is 'username-invalid'
+                                        username.invalid = true
+                                else
+                                        username.error = true
+                                username.username = value
+
+                        RocketChat.Button.reset(button)
+                        instance.username.set(username)
+
+                        if not err?
+                                Meteor.call 'joinDefaultChannels'
+#end of instant login
 		Meteor.defer ->
 			self.find('input').focus()
 
