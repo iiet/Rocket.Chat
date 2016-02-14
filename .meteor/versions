@@ -44,6 +44,7 @@ htmljs@1.0.5
 http@1.1.1
 id-map@1.0.4
 idorecall:email-normalize@1.0.0
+iiet:irc@0.0.1
 jalik:ufs@0.5.0
 jalik:ufs-gridfs@0.1.1
 jparker:crypto-core@0.1.0
@@ -127,7 +128,6 @@ rocketchat:github-enterprise@0.0.1
 rocketchat:gitlab@0.0.1
 rocketchat:highlight@0.0.1
 rocketchat:integrations@0.0.1
-rocketchat:irc@0.0.1
 rocketchat:lib@0.0.1
 rocketchat:livechat@0.0.1
 rocketchat:logger@0.0.1
