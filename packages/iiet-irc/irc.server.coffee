@@ -6,6 +6,7 @@ IRC_PORT = 6667
 IRC_HOST = 'irc.freenode.net'
 IRC_ROOM = { name: 'i@eaiie', t: 'c' }
 GENERAL_ROOM = 'general'
+GENERAL_ROOM_OBJ = RocketChat.models.Rooms.findOneByName('general')
 
 ircClientMap = {}
 ircReceiveMessageCache = Lru MESSAGE_CACHE_SIZE
@@ -161,16 +162,12 @@ class IrcClient
 
 		console.log '[irc] onReceiveMessage -> '.yellow, 'source:', source, 'target:', target, 'content:', content
 		source = @createUserWhenNotExist source
-		console.log(target)
 		if target == '#i@eaiie'
-			console.log(GENERAL_ROOM)
-			room = RocketChat.models.Rooms.findOneByName(GENERAL_ROOM)
+			room = GENERAL_ROOM_OBJ
 		if target[0] == '#'
 			room = RocketChat.models.Rooms.findOneByName(target.substring(1))
 		else
 			room = @createDirectRoomWhenNotExist(source, @user)
-
-		console.log(room)
 
 		message =
 			msg: content
@@ -178,7 +175,8 @@ class IrcClient
 		cacheKey = "#{source.username}#{timestamp}"
 		ircReceiveMessageCache.set cacheKey, true
 		console.log '[irc] ircReceiveMessageCache.set -> '.yellow, 'key:', cacheKey
-		RocketChat.sendMessage source, message, room
+		room = GENERAL_ROOM_OBJ if (room == undefined )
+		RocketChat.sendMessage(source, message, room)
 
 	onReceiveMemberList: (roomName, members) ->
 		@receiveMemberListBuf[roomName] = @receiveMemberListBuf[roomName].concat members
@@ -186,7 +184,11 @@ class IrcClient
 	onEndMemberList: (roomName) ->
 		newMembers = @receiveMemberListBuf[roomName]
 		console.log '[irc] onEndMemberList -> '.yellow, 'room:', roomName, 'members:', newMembers.join ','
-		room = RocketChat.models.Rooms.findOneByNameAndType roomName, 'c'
+		if roomName == '#i@eaiie'
+			room = GENERAL_ROOM_OBJ
+		else
+			room = RocketChat.models.Rooms.findOneByNameAndType(roomName, 'c')
+
 		unless room
 			return
 
@@ -239,8 +241,6 @@ class IrcClient
 
 		rooms = roomsCursor.fetch()
 
-		console.log(rooms)
-
 		for room in rooms
 			@joinRoom(room)
 		@joinRoom(IRC_ROOM)
@@ -248,7 +248,6 @@ class IrcClient
 	joinRoom: (room) ->
 		if room.t isnt 'c' or room.name == 'general'
 			return
-		console.log('[D] ' + room.name)
 		if @isJoiningRoom
 			@pendingJoinRoomBuf.push room.name
 		else
@@ -368,9 +367,11 @@ class IrcSender
 			return message
 
 		room = RocketChat.models.Rooms.findOneById message.rid, { fields: { name: 1, usernames: 1, t: 1 } }
+		ircClient = IrcClient.getByUid message.u._id
 		if (room.name == GENERAL_ROOM)
-			ircClient = IrcClient.getByUid message.u._id
 			ircClient.sendMessage IRC_ROOM, message
+		else
+			ircClient.sendMessage room, message
 		return message
 
 
