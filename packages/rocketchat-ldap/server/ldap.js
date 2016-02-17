@@ -1,4 +1,4 @@
-const ldapjs = Npm.require('ldapjs');
+const ldapjs = LDAPJS;
 
 const logger = new Logger('LDAP', {
 	methods: {
@@ -63,7 +63,18 @@ LDAP = class LDAP {
 		};
 
 		if (self.options.ca_cert && self.options.ca_cert !== '') {
-			tlsOptions.ca = [self.options.ca_cert];
+			// Split CA cert into array of strings
+			var chainLines = RocketChat.settings.get('LDAP_CA_Cert').split("\n");
+			var cert = [];
+			var ca = [];
+			chainLines.forEach(function(line) {
+				cert.push(line);
+				if (line.match(/-END CERTIFICATE-/)) {
+					ca.push(cert.join("\n"));
+					cert = [];
+				}
+			});
+			tlsOptions.ca = ca;
 		}
 
 		if (self.options.encryption === 'ssl') {
@@ -89,6 +100,12 @@ LDAP = class LDAP {
 		});
 
 		if (self.options.encryption === 'tls') {
+
+			// Set host parameter for tls.connect which is used by ldapjs starttls. This shouldn't be needed in newer nodejs versions (e.g v5.6.0).
+			// https://github.com/RocketChat/Rocket.Chat/issues/2035
+			// https://github.com/mcavage/node-ldapjs/issues/349
+			tlsOptions.host = [self.options.host];
+
 			logger.connection_info('Starting TLS');
 			logger.connection_debug('tlsOptions', tlsOptions);
 
@@ -142,8 +159,8 @@ LDAP = class LDAP {
 
 			return {
 				filter: custom_domain_search.filter,
-				domain_search_user: custom_domain_search.userDN,
-				domain_search_password: custom_domain_search.password
+				domain_search_user: custom_domain_search.userDN || '',
+				domain_search_password: custom_domain_search.password || ''
 			};
 		}
 
@@ -176,8 +193,8 @@ LDAP = class LDAP {
 
 		return {
 			filter: filter.join(''),
-			domain_search_user: self.options.domain_search_user,
-			domain_search_password: self.options.domain_search_password
+			domain_search_user: self.options.domain_search_user || '',
+			domain_search_password: self.options.domain_search_password || ''
 		};
 	}
 

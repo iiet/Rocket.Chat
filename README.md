@@ -10,6 +10,7 @@ The Ultimate Open Source WebChat Platform
   * [Scalingo](#scalingo)
   * [Sandstorm.io](#sandstormio)
   * [Sloppy.io](#sloppyio)
+  * [IndieHosters](#indiehosters)
   * [Docker](#docker)
   * [FreeBSD](#freebsd)
   * [Ansible](#ansible)
@@ -76,6 +77,11 @@ _*Grab*_ the [Sandstorm SPK for the latest Rocket.Chat release](https://rocket.c
 
 ## Sloppy.io
 Host your docker container at [sloppy.io](http://sloppy.io). Get an account and use the [quickstarter](https://github.com/sloppyio/quickstarters/tree/master/rocketchat)
+
+## IndieHosters
+Get your Rocket.Chat instance hosted in a "as a Service" style. You register and we manage it for you! (updates, backup...)
+
+[![Rocket.Chat on IndieHosters](https://indie.host/signup.png)](https://indiehosters.net/shop/product/rocket-chat-21)
 
 ## Docker
 [Deploy with docker compose](https://github.com/RocketChat/Rocket.Chat/wiki/Deploy-with-Docker)
@@ -196,6 +202,7 @@ It is a great solution for communities and companies wanting to privately host t
 - XMPP bridge ([try it](https://demo.rocket.chat/channel/xmppbridge))
 - REST APIs
 - Remote Locations Video Monitoring
+- Native real-time APIs for Microsoft C#, Visual Basic, F# and other .NET supported languages ([Get it!](https://www.nuget.org/packages/Rocket.Chat.Net/0.0.12-pre))
 - Chat-ops powered by Hubot: scalable horizontal app integration (early access)
 - Massively scalable hosting and provisioning (beta testing now)
 - Native Cross-Platform Desktop Application [Windows, Mac OSX, or Linux](https://rocket.chat/)

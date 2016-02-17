@@ -129,3 +129,4 @@ rocketchat:integrations
 rocketchat:message-attachments
 rocketchat:api
 iiet:irc
+rocketchat:highlight-words
