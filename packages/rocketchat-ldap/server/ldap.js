@@ -1,16 +1,11 @@
 const ldapjs = LDAPJS;
 
 const logger = new Logger('LDAP', {
-	methods: {
-		connection_info: { type: 'info' },
-		connection_debug: { type: 'debug' },
-		connection_error: { type: 'error' },
-		bind_info: { type: 'info' },
-		search_info: { type: 'info' },
-		search_debug: { type: 'debug' },
-		search_error: { type: 'error' },
-		auth_info: { type: 'info' },
-		auth_debug: { type: 'debug' }
+	sections: {
+		connection: 'Connection',
+		bind: 'Bind',
+		search: 'Search',
+		auth: 'Auth'
 	}
 });
 
@@ -46,7 +41,7 @@ LDAP = class LDAP {
 	connectAsync(callback) {
 		const self = this;
 
-		logger.connection_info('Init setup');
+		logger.connection.info('Init setup');
 
 		let replied = false;
 
@@ -84,15 +79,15 @@ LDAP = class LDAP {
 			connectionOptions.url = `ldap://${connectionOptions.url}`;
 		}
 
-		logger.connection_info('Connecting', connectionOptions.url);
-		logger.connection_debug('connectionOptions', connectionOptions);
+		logger.connection.info('Connecting', connectionOptions.url);
+		logger.connection.debug('connectionOptions', connectionOptions);
 
 		self.client = ldapjs.createClient(connectionOptions);
 
 		self.bindSync = Meteor.wrapAsync(self.client.bind, self.client);
 
 		self.client.on('error', function(error) {
-			logger.connection_error('connection', error);
+			logger.connection.error('connection', error);
 			if (replied === false) {
 				replied = true;
 				callback(error, null);
@@ -106,12 +101,12 @@ LDAP = class LDAP {
 			// https://github.com/mcavage/node-ldapjs/issues/349
 			tlsOptions.host = [self.options.host];
 
-			logger.connection_info('Starting TLS');
-			logger.connection_debug('tlsOptions', tlsOptions);
+			logger.connection.info('Starting TLS');
+			logger.connection.debug('tlsOptions', tlsOptions);
 
 			self.client.starttls(tlsOptions, null, function(error, response) {
 				if (error) {
-					logger.connection_error('TLS connection', error);
+					logger.connection.error('TLS connection', error);
 					if (replied === false) {
 						replied = true;
 						callback(error, null);
@@ -119,7 +114,7 @@ LDAP = class LDAP {
 					return;
 				}
 
-				logger.connection_info('TLS connected');
+				logger.connection.info('TLS connected');
 				self.connected = true;
 				if (replied === false) {
 					replied = true;
@@ -128,7 +123,7 @@ LDAP = class LDAP {
 			});
 		} else {
 			self.client.on('connect', function(response) {
-				logger.connection_info('LDAP connected');
+				logger.connection.info('LDAP connected');
 				self.connected = true;
 				if (replied === false) {
 					replied = true;
@@ -139,7 +134,7 @@ LDAP = class LDAP {
 
 		setTimeout(function() {
 			if (replied === false) {
-				logger.connection_error('connection time out', connectionOptions.timeout);
+				logger.connection.error('connection time out', connectionOptions.timeout);
 				replied = true;
 				callback(new Error('Timeout'));
 			}
@@ -201,11 +196,16 @@ LDAP = class LDAP {
 	bindIfNecessary() {
 		const self = this;
 
+		if (self.domainBinded === true) {
+			return;
+		}
+
 		const domain_search = self.getDomainBindSearch();
 
 		if (domain_search.domain_search_user !== '' && domain_search.domain_search_password !== '') {
-			logger.bind_info('Binding admin user', domain_search.domain_search_user);
+			logger.bind.info('Binding admin user', domain_search.domain_search_user);
 			self.bindSync(domain_search.domain_search_user, domain_search.domain_search_password);
+			self.domainBinded = true;
 		}
 	}
 
@@ -221,11 +221,90 @@ LDAP = class LDAP {
 			scope: 'sub'
 		};
 
-		logger.search_info('Searching user', username);
-		logger.search_debug('searchOptions', searchOptions);
-		logger.search_debug('domain_base', self.options.domain_base);
+		logger.search.info('Searching user', username);
+		logger.search.debug('searchOptions', searchOptions);
+		logger.search.debug('domain_base', self.options.domain_base);
 
 		return self.searchAllSync(self.options.domain_base, searchOptions);
+	}
+
+	getUserByIdSync(id, attribute) {
+		const self = this;
+
+		self.bindIfNecessary();
+
+		const domain_search = self.getDomainBindSearch();
+
+		let Unique_Identifier_Field = RocketChat.settings.get('LDAP_Unique_Identifier_Field').split(',');
+
+		let filter;
+
+		if (attribute) {
+			filter = new self.ldapjs.filters.EqualityFilter({
+				attribute: attribute,
+				value: new Buffer(id, 'hex')
+			});
+		} else {
+			const filters = [];
+			Unique_Identifier_Field.forEach(function(item) {
+				filters.push(new self.ldapjs.filters.EqualityFilter({
+					attribute: item,
+					value: new Buffer(id, 'hex')
+				}));
+			});
+
+			filter = new self.ldapjs.filters.OrFilter({filters: filters});
+		}
+
+		const searchOptions = {
+			filter: filter,
+			scope: 'sub'
+		};
+
+		logger.search.info('Searching by id', id);
+		logger.search.debug('search filter', searchOptions.filter.toString());
+		logger.search.debug('domain_base', self.options.domain_base);
+
+		const result = self.searchAllSync(self.options.domain_base, searchOptions);
+
+		if (!Array.isArray(result) || result.length === 0) {
+			return;
+		}
+
+		if (result.length > 1) {
+			logger.search.error('Search by id', id, 'returned', result.length, 'records');
+		}
+
+		return result[0];
+	}
+
+	getUserByUsernameSync(username) {
+		const self = this;
+
+		self.bindIfNecessary();
+
+		const domain_search = self.getDomainBindSearch();
+
+		const searchOptions = {
+			filter: domain_search.filter.replace(/#{username}/g, username),
+			scope: 'sub'
+		};
+
+		logger.search.info('Searching user', username);
+		logger.search.debug('searchOptions', searchOptions);
+		logger.search.debug('domain_base', self.options.domain_base);
+
+		const result = self.searchAllSync(self.options.domain_base, searchOptions);
+
+		if (!Array.isArray(result) || result.length === 0) {
+			return;
+		}
+
+		if (result.length > 1) {
+			logger.search.error('Search by id', id, 'returned', result.length, 'records');
+		}
+
+		return result[0];
 	}
 
 	searchAllAsync(domain_base, options, callback) {
@@ -233,26 +312,28 @@ LDAP = class LDAP {
 
 		self.client.search(domain_base, options, function(error, res) {
 			if (error) {
-				logger.search_error(error);
+				logger.search.error(error);
 				callback(error);
 				return;
 			}
 
 			res.on('error', function(error) {
-				logger.search_error(error);
+				logger.search.error(error);
 				callback(error);
 				return;
 			});
 
-			let entries = [];
+			const entries = [];
+			const jsonEntries = [];
 
 			res.on('searchEntry', function(entry) {
 				entries.push(entry);
+				jsonEntries.push(entry.json);
 			});
 
 			res.on('end', function(result) {
-				logger.search_info('Search result count', entries.length);
-				logger.search_debug('Search result', entries);
+				logger.search.info('Search result count', entries.length);
+				logger.search.debug('Search result', JSON.stringify(jsonEntries, null, 2));
 				callback(null, entries);
 			});
 		});
@@ -261,15 +342,15 @@ LDAP = class LDAP {
 	authSync(dn, password) {
 		const self = this;
 
-		logger.auth_info('Authenticating', dn);
+		logger.auth.info('Authenticating', dn);
 
 		try {
 			self.bindSync(dn, password);
-			logger.auth_info('Authenticated', dn);
+			logger.auth.info('Authenticated', dn);
 			return true;
 		} catch(error) {
-			logger.auth_info('Not authenticated', dn);
-			logger.auth_debug('error', error);
+			logger.auth.info('Not authenticated', dn);
+			logger.auth.debug('error', error);
 			return false;
 		}
 	}
@@ -278,7 +359,7 @@ LDAP = class LDAP {
 		const self = this;
 
 		self.connected = false;
-		logger.connection_info('Disconecting');
+		logger.connection.info('Disconecting');
 		self.client.unbind();
 	}
 };
