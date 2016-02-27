@@ -30,12 +30,11 @@ session
 spacebars
 standard-minifiers
 tracker
-
-arunoda:streams
-rocketchat:lib
-
+rocketchat:api
+rocketchat:assets
 rocketchat:authorization
 rocketchat:autolinker
+rocketchat:cas
 rocketchat:channel-settings
 rocketchat:channel-settings-mail-messages
 rocketchat:colors
@@ -44,6 +43,9 @@ rocketchat:emojione
 rocketchat:favico
 rocketchat:file
 rocketchat:highlight
+rocketchat:highlight-words
+rocketchat:integrations
+rocketchat:lib
 rocketchat:livechat
 rocketchat:logger
 rocketchat:mailer
@@ -51,9 +53,11 @@ rocketchat:markdown
 rocketchat:me
 rocketchat:mentions
 rocketchat:mentions-flextab
+rocketchat:message-attachments
 rocketchat:message-pin
 rocketchat:message-star
 rocketchat:migrations
+rocketchat:oauth2-server-config
 rocketchat:oembed
 rocketchat:push-notifications
 rocketchat:slashcommands-invite
@@ -86,6 +90,7 @@ konecty:multiple-instances-status
 konecty:nrr
 konecty:user-presence
 
+arunoda:streams
 chrismbeckett:toastr
 dispatch:run-as-user
 francocatena:status
@@ -118,8 +123,3 @@ yasaricli:slugify
 yasinuslu:blaze-meta
 # sanjo:jasmine
 # velocity:html-reporter
-rocketchat:assets
-rocketchat:integrations
-rocketchat:message-attachments
-rocketchat:api
-rocketchat:highlight-words

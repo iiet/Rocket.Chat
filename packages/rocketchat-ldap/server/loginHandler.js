@@ -129,8 +129,7 @@ Accounts.registerLoginHandler("ldap", function(loginRequest) {
 	logger.info('User does not exists, creating', username);
 	// Create new user
 	var userObject = {
-		username: username,
-		password: loginRequest.ldapPass
+		username: username
 	};
 
 	let userData = getDataToSyncUserData(ldapUser, {});
@@ -145,7 +144,16 @@ Accounts.registerLoginHandler("ldap", function(loginRequest) {
 		throw new Meteor.Error("LDAP-login-error", "LDAP Authentication succeded, there is no email to create an account.");
 	}
 
-	userObject._id = Accounts.createUser(userObject);
+	logger.debug('New user data', userObject);
+
+	userObject.password = loginRequest.ldapPass;
+
+	try {
+		userObject._id = Accounts.createUser(userObject);
+	} catch(error) {
+		logger.error('Error creating user', error);
+		throw error;
+	}
 
 	syncUserData(userObject, ldapUser);
 

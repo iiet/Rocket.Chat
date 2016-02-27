@@ -11,6 +11,8 @@ RocketChat.settings.addGroup 'Accounts', ->
 	@add 'Accounts_RequireNameForSignUp', true, { type: 'boolean', public: true }
 	@add 'Accounts_LoginExpiration', 90, { type: 'int', public: true }
 	@add 'Accounts_ShowFormLogin', true, { type: 'boolean', public: true }
+	@add 'Accounts_EmailOrUsernamePlaceholder', '', { type: 'string', public: true, i18nLabel: 'Placeholder_for_email_or_username_login_field' }
+	@add 'Accounts_PasswordPlaceholder', '', { type: 'string', public: true, i18nLabel: 'Placeholder_for_password_login_field' }
 
 	@section 'Registration', ->
 		@add 'Accounts_EmailVerification', false, { type: 'boolean', public: true }
@@ -149,6 +151,10 @@ RocketChat.settings.addGroup 'Push', ->
 		@add 'Push_gcm_api_key', '', { type: 'string' }
 		@add 'Push_gcm_project_number', '', { type: 'string', public: true }
 
+	@section 'Privacy', ->
+		@add 'Push_show_username_room', true, { type: 'boolean', public: true }
+		@add 'Push_show_message', true, { type: 'boolean', public: true }
+
 
 RocketChat.settings.addGroup 'Layout', ->
 	@add 'Layout_Sidenav_Footer', '<div><a href="https://github.com/RocketChat/Rocket.Chat" class="logo" target="_blank"> <img src="/images/logo/logo.svg?v=3" /></a><div class="github-tagline"><span class="octicon octicon-pencil" style="color: #994C00"></span> with <span class="octicon octicon-heart" style="color: red"></span> on <span class="octicon octicon-mark-github"></span></div></div>', { type: 'string', public: true, i18nDescription: 'Layout_Sidenav_Footer_description' }
@@ -176,4 +182,3 @@ RocketChat.settings.init()
 # Remove runtime settings (non-persistent)
 Meteor.startup ->
 	RocketChat.models.Settings.update({ ts: { $lt: RocketChat.settings.ts }, persistent: { $ne: true } }, { $set: { hidden: true } }, { multi: true })
-	RocketChat.models.Settings.update({ ts: { $gte: RocketChat.settings.ts } }, { $unset: { hidden: 1 } }, { multi: true })
