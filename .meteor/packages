@@ -34,7 +34,6 @@ rocketchat:api
 rocketchat:assets
 rocketchat:authorization
 rocketchat:autolinker
-rocketchat:cas
 rocketchat:channel-settings
 rocketchat:channel-settings-mail-messages
 rocketchat:colors
@@ -57,7 +56,6 @@ rocketchat:message-attachments
 rocketchat:message-pin
 rocketchat:message-star
 rocketchat:migrations
-rocketchat:oauth2-server-config
 rocketchat:oembed
 rocketchat:push-notifications
 rocketchat:slashcommands-invite
@@ -123,3 +121,4 @@ yasaricli:slugify
 yasinuslu:blaze-meta
 # sanjo:jasmine
 # velocity:html-reporter
+meteorhacks:kadira

@@ -74,6 +74,8 @@ meteor-developer@1.1.5
 meteorhacks:fast-render@2.10.0
 meteorhacks:inject-data@1.4.1
 meteorhacks:inject-initial@1.0.3
+meteorhacks:kadira@2.28.1
+meteorhacks:meteorx@1.4.1
 meteorhacks:picker@1.0.3
 meteorspark:util@0.2.0
 minifiers@1.1.7
@@ -127,12 +129,6 @@ rocketchat:favico@0.0.1
 rocketchat:file@0.0.1
 rocketchat:highlight@0.0.1
 rocketchat:highlight-words@0.0.1
-<<<<<<< HEAD
-=======
-rocketchat:importer@0.0.1
-rocketchat:importer-hipchat@0.0.1
-rocketchat:importer-slack@0.0.1
->>>>>>> upstream/develop
 rocketchat:integrations@0.0.1
 rocketchat:lib@0.0.1
 rocketchat:livechat@0.0.1
