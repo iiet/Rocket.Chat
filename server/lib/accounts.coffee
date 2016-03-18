@@ -4,10 +4,10 @@ Accounts.config accountsConfig
 
 RocketChat.settings.get 'Accounts_AllowedDomainsList', (_id, value) ->
 	domainWhiteList = _.map value.split(','), (domain) -> domain.trim()
-	restrictCreationByEmailDomain = (email) ->
+	restrictCreationByEmailDomain = if domainWhiteList.length == 1 then domainWhiteList[0] else (email) ->
 		ret = false
 		for domain in domainWhiteList
-			if email.match(domain + '$')
+			if email.match('@' + RegExp.escape(domain) + '$')
 				ret = true
 				break;
 
@@ -104,7 +104,8 @@ Accounts.validateLoginAttempt (login) ->
 		throw new Meteor.Error 'inactive-user', TAPi18n.__ 'User_is_not_activated'
 		return false
 
-	if login.type is 'password' and RocketChat.settings.get('Accounts_EmailVerification') is true
+	# If user is admin, no need to check if e-mail is verified
+	if 'admin' not in login.user?.roles and login.type is 'password' and RocketChat.settings.get('Accounts_EmailVerification') is true
 		validEmail = login.user.emails.filter (email) ->
 			return email.verified is true
 

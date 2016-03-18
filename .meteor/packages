@@ -41,6 +41,7 @@ rocketchat:custom-oauth
 rocketchat:emojione
 rocketchat:favico
 rocketchat:file
+rocketchat:file-upload
 rocketchat:highlight
 rocketchat:highlight-words
 rocketchat:integrations
@@ -57,6 +58,7 @@ rocketchat:message-pin
 rocketchat:message-star
 rocketchat:migrations
 rocketchat:oembed
+rocketchat:otr
 rocketchat:push-notifications
 rocketchat:slashcommands-invite
 rocketchat:slashcommands-join
@@ -97,7 +99,6 @@ jalik:ufs-gridfs
 jparker:gravatar
 kadira:blaze-layout
 kadira:flow-router
-kevohagan:sweetalert
 mizzao:autocomplete
 mizzao:timesync
 momentjs:moment
@@ -114,7 +115,6 @@ raix:push
 raix:ui-dropped-event
 tap:i18n
 tmeasday:crypto-md5
-tmeasday:errors
 todda00:friendly-slugs
 underscorestring:underscore.string
 yasaricli:slugify
@@ -122,3 +122,6 @@ yasinuslu:blaze-meta
 # sanjo:jasmine
 # velocity:html-reporter
 meteorhacks:kadira
+smoral:sweetalert
+rocketchat:iframe-login
+rocketchat:katex

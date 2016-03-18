@@ -1,5 +1,126 @@
 ## NEXT
 
+- Fixes #2477: Admin settings, plain-text SMTP password.
+- Closes #625: Filter and sorts direct messages and private groups.
+- Closes #2172: Accepts markdown for room topic.
+- Fixes #2433: Directly linked channel does not load for newly created user
+
+## 0.22.0, 2016-Mar-14
+
+- Add AES encryption routines
+- Add CDN config option for file upload
+- Add icon to show OTR status in channel title
+- Add option to disable integration and scripts
+- Add Off-The-Record funtionallity
+- Add RocketChat.promises API
+- Allow outgoing scripts to call HTTP
+- Allow processOutgoingResponseScript to process erros
+- Allow send message and continue with the request
+- Always notifies livechat messages - Closes #2212
+- Better rendering of message attachment text
+- Client validation of valid types for upload
+- Close #1635; Add textarea for adding custom CSS/JS
+- Close #2494; Close all opened rooms on logout
+- Enables notification by displaying "Encrypted message" instead of the hash or the actual message
+- Fix bug when changing room name to same value
+- Fix code indentation - closes #2454
+- Moves change of language to preferences
+- Requires current password to change profile settings
+- Fixes #691; Adds sorting to channels list.
+- Fixes S3 config without acl
+- Improve UI of new messages bar
+- Improved send button
+- Move custom OAuth to OAuth section of admin panel
+- Moved all fileupload settings to package
+- Moving files to expose functions
+- Pass request as object to process_incoming_request
+- Protect file uploads on S3
+- Readding autocomplete to message input box - fixes #2489
+- Reduce font-size of new messages bar
+- Refactor for file upload response handlers API
+- Removed Meteor Error copy-pasted problem
+- Renaming files to match the storage config
+- Shows a send button if there is a message in the text box
+- Stops using tmeasday:errors and use toastr instead
+- Support for delete uploaded files
+- Support for region and bucketUrl S3 configs
+- Support multiple upload file handlers
+- Support to upload files to S3
+- Trim slashes from Site_Url - closes #2462
+- Upload files to file system support
+
+## 0.21.0, 2016-Mar-07
+
+- Add ability for users to delete their own accounts
+- Add infinite scrolling to channels list
+- Add search bar to the channels flex
+- Add setting to allow/deny own account deletion
+- Allow numeric characters in the OAuth2 provider name
+- Allow post messages starting with slash
+- Allow prepareOutgoingRequestScript to stop execution and return a message
+- Blank channel when sending attachments as object
+- CAS Plugin: Use Meteor.users.services.cas.external_id to identify users instead of Meteor.users.username.
+- Defers user deletion
+- Delete MAINTAINERS.md
+- Disable E-mail Confirmation setting when SMTP is not set.
+- Do not add a value in both $set and $setOnInsert
+- Escapes regex in room search
+- Fix #766; Disable E-mail Confirmation setting when SMTP is not set.
+- Fixes #2399. Fixes bug with highlighted words which allowed an empty string to be defined as highlight.
+- Fixes #924. Admin users may now login without verifying their e-mails.
+- Fixes oauth registration deleting account with unverified e-mail
+- Improve last commit
+- Improve user search when adding in channels
+- Improves layout of new password requested
+- Init incoming webhook scripting
+- Init outgoing webhook scripting
+- Log error when trying to creat a user with no email via LDAP
+- Make channels list load faster by not getting full channel data, such as usernames.
+- Profile page improvements.
+- Removes loading animation overlay after pages are rendered.
+- Removes login_style setting of custom oauth.
+- Sharing recent excitement around CRM integrations
+- Shows OAuth Callback URLs
+- Support 'user_id' in addition to 'id' and 'ID' for service identifier
+
+## 0.20.0, 2016-Feb-29
+
+- Ability to disable sending nickname and message via push notification
+- Added back 'delete room' button - closes #2351
+- Added block and hidden options that can be set by env vars
+- Added description and protected flag to default roles
+- Added zh-TW and zh-HK
+- Allow markdown in attachment fields
+- Avoid using SVG for Sandstorm
+- CAS Plugin: refactored logging
+- Closes #2178; Admin View Logs should auto-scroll to end
+- Closes #2316; Send test mail will block the server
+- Closes #780; Do not change the sweet alert size in small screens, change the upload-preview size
+- Closes #800; Add loading before main page render and add Fast Render
+- Do not print passwor in new LDAP log
+- Do not reset permission's roles at startup - closes #2164
+- Do not slugify room names at renaming - fixes #1571
+- Enable username as template from LDAP and enable username sync
+- Expose getAvatarUrlFromUsername function to server side
+- Fix 'render' callback of MessageTypes
+- Fix publish user_data  under "spotlight"
+- Fix root url on server side
+- Fix show more users button
+- Fixed errors saving room info in admin
+- Improve WebRTC audio quality
+- Improved sidebar overlay - should fix RocketChat/Rocket.Chat.Cordova#15
+- Improved system messages style
+- Message with types are not groupable by default
+- Moving room name to the beginning of the push notifications msg
+- Observe API embed setting and apply immediatly - fixes #1989
+- Remove _emojione.import.less from server.coffee
+- Remove native sound of notifications
+- Remove newline from en.i18n.json
+- Remove unused files and closes #801
+- Support for pinned message notification
+- Updated sweetalert
+- Uses the setting for validating rooms renaming - closes #2297
+
 ## 0.19.0, 2016-Feb-22
 
 - Re authorize streams on reconnect
@@ -128,7 +249,7 @@
 - Enable editing via admin / users
 - Log error when trigger url returns 500
 - Bind starttls correctly for LDAP
-- Custom oAuth supporting json or plain content_types responses of the identity
+- Custom OAuth supporting json or plain content_types responses of the identity
 - Allow pass room id to direct rooms
 - Outgoing: Get the room from posted message to reply
 - Change Meteor.absoluteUrl to force SSL if Force_SSL is true
@@ -457,7 +578,7 @@
 - New RocketChat.RateLimiter
 - Favico.js update
 - Better RTL support
-- Remove custom oAuth record when removed from settings
+- Remove custom OAuth record when removed from settings
 - Improve Settings layout
 - Collapse sub groups of settings
 - Change translations in PT for False and True

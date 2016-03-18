@@ -46,13 +46,20 @@
 			<div class="connection-status">
 				{{> status}}
 			</div>
-			{{> loginLayout center="loginForm"}}
+			{{#if useIframe}}
+				{{#if iframeUrl}}
+					<iframe src="{{iframeUrl}}" style="height: 100%; width: 100%;"></iframe>
+				{{/if}}
+			{{else}}
+				{{> loginLayout center="loginForm"}}
+			{{/if}}
+			<script>{{{CustomScriptLoggedOut}}}</script>
 		{{else}}
 			{{#unless hasUsername}}
 				{{> username}}
 			{{else}}
 				{{#if requirePasswordChange}}
-					{{> logoLayout render="requestPasswordChange"}}
+					{{> logoLayout render="resetPassword"}}
 				{{else}}
 					{{> spotlight}}
 					{{> mobileMessageMenu}}
@@ -77,6 +84,7 @@
 					{{> audioNotification }}
 				{{/if}}
 			{{/unless}}
+			<script>{{{CustomScriptLoggedIn}}}</script>
 		{{/unless}}
 	{{/if}}
 </template>
