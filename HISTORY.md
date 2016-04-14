@@ -1,7 +1,90 @@
 ## NEXT
 
-- Fix #2634. Admins are warned if they have not verified their e-mail and e-mail verification is true.
-- Fix #2565 - Don't let the last owner leave the room. Warn user.
+## 0.26.0, 2016-Apr-11
+
+- Add a download icon to file list (#2817)
+- Add ability to hide embedded media
+- Add checks to removeRoomOwner to deny removing last owner
+- Add Livechat custom fields (#2840)
+- Add New status for livechat agents (#2821)
+- Add option on custom oauth to send access token in headers or in payload (#2818)
+- Add pin-message permission to users when public pinning was allowed
+- Add scope option to create roles
+- Allow creating new roles with room scope and add/remove users to role
+- Change add-user permission to create-user permission, to avoid mistakes with add-user-to-room permission (to be created)
+- Clear stream read permission cache on subscribe
+- Clicking outside the message actions box closes it
+- Close #2656 Add schemes settings for Markdown links (#2794)
+- Close #2656 Markdown Headers do not work
+- Close #2696 RocketChat hijacking Firefox shortcut
+- Close #2744 Add a description with warning text for Force_SSL
+- Create archive and unarchive room permissions
+- Create new model method insertOrUpsert based on _id
+- Create permission to add user to room
+- Disable auto-linking inside Katex
+- Do not set DDP_DEFAULT_CONNECTION_URL
+- Feature to add maximum channel members for an @all message to send notifications (#2826)
+- Fix #2743 loadSurroundingMessages' TypeError: Cannot set property
+- Fix #2751 When no password is set (logged in via oauth), don't ask for password when saving profile and ask for username when deleting account
+- Fix menu touch/move and audio touch
+- Fix migration 36 (assets) using a new migration 42
+- Hide livechat users and rooms from the admin pages (#2820)
+- Replace Autolinker.js and add AutoLinker settings
+- Update archive and unarchive room permissions
+- Update emojione to 2.1.4
+- Update fontello from livechat app
+- Update bash shebang on shell scripts for portability
+- Use insertOrUpsert for new messages in Messages model
+- Use new error format
+- Use RocketChat Logger as SyncedCron logger
+- When creating a room, set user only as owner, not moderator
+
+## 0.25.0, 2016-Apr-04
+
+- Add black list email list options
+- Add more indexes to users collection
+- Add request size limit
+- Add support for 1Password in iOS mobile app >= 2.2.4
+- Add support to social share in mobile apps
+- Better visual for highlighting
+- CanAddUser update to use owner and moderator roles instead of creator for adding users to a channel or private group
+- Close #2666; Add a back button
+- Close #2685; Jump to first unread message doesn't work
+- Create migration for Layout_Login_Header
+- Display error from leaveRoom method
+- Do not redirect assets, pass to static files middleware
+- Expose Assets methods via RocketChat.Assets
+- Fix #1194 OEmbed http requests use "request" npm package instead of official node modules.
+- Fix #2565 Don't let the last owner leave the room. Warn user.
+- Fix #2634 Admins are warned if they have not verified their e-mail and e-mail verification is true.
+- Fix #2659 security issue with required password change.
+- Fix #2687 as per vetash suggestion.
+- Fix #2697 "Create" vs "Save" button when creating a direct message room
+- Fix #2698 When creating a DM room, Enter should submit the form
+- Fix #2712 Logo on bottom left hand corner is missing icons
+- Fix accidental opening of links in mobile
+- Fix default sorting on channels list
+- Fix editing users in admin
+- Fix emoji character overlaping image on RTL
+- Fix incorrect url to supply for oAuth providers
+- Fix Oauth for django oauth toolkit
+- Fix ROOT_URL_PATH_PREFIX and add tab base
+- Fix text selection for cordova
+- Fix to package file/versions: - Do not depend on specific version of ostrio:cookies to use newer versions with fixes - Update all packages with latest versions
+- Improve the unread mark calculator 
+- Misc fixes to allow running from subdirectory rather than root (/)
+- Move i18n files to inside the lib package
+- Prevent to open message menu for long press in links on mobile
+- Reject embed if URL is not http scheme
+- Removed condition that hides "User left message" in channels
+- Serve assets with extensions
+- Set _updateAt when updating setting
+- Show loading while loading initial subscriptions
+- Show URL attributes after applying Handlebars.SafeString
+- Use absoluteUrl instead of location.origin so ROOT_URL is taken into account
+- Use native action sheet for message actions in mobile
+- Use page-loading animation when waiting subs
+- Use ReadOnly globals
 
 ## 0.24.0, 2016-Mar-28
 
