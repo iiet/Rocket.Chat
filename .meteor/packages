@@ -46,7 +46,6 @@ rocketchat:highlight
 rocketchat:highlight-words
 rocketchat:integrations
 rocketchat:lib
-rocketchat:livechat
 rocketchat:logger
 rocketchat:mailer
 rocketchat:markdown

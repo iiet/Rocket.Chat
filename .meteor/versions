@@ -73,8 +73,8 @@ meteor-base@1.0.1
 meteor-developer@1.1.5
 meteorhacks:fast-render@2.13.0
 meteorhacks:inject-data@2.0.0
-meteorhacks:kadira@2.28.1
 meteorhacks:inject-initial@1.0.4
+meteorhacks:kadira@2.28.1
 meteorhacks:meteorx@1.4.1
 meteorhacks:picker@1.0.3
 meteorspark:util@0.2.0
@@ -136,7 +136,6 @@ rocketchat:iframe-login@1.0.0
 rocketchat:integrations@0.0.1
 rocketchat:katex@0.0.1
 rocketchat:lib@0.0.1
-rocketchat:livechat@0.0.1
 rocketchat:logger@0.0.1
 rocketchat:mailer@0.0.1
 rocketchat:markdown@0.0.1
