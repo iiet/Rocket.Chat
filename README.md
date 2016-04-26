@@ -116,7 +116,7 @@ Host your docker container at [sloppy.io](http://sloppy.io). Get an account and 
 
 
 ## Docker
-[Deploy with docker compose](https://github.com/RocketChat/Rocket.Chat/wiki/Deploy-with-Docker)
+[Deploy with docker compose](https://rocket.chat/docs/master/installing-and-updating/using-docker/docker-compose)
 
 or
 
@@ -146,9 +146,9 @@ Run solid five-nines deployment on industry workhorse FreeBSD server:
 
 ## Windows Server
 
-Deploy on your own enterprise server, or with Microsoft Azur:
+Deploy on your own enterprise server, or with Microsoft Azure:
 
-[![Windows 2012 or 2016 Server](https://github.com/Sing-Li/bbug/blob/master/images/windows.png)](https://rocket.chat/docs/master/installing-and-updating/deployment-options/freebsd)
+[![Windows 2012 or 2016 Server](https://github.com/Sing-Li/bbug/blob/master/images/windows.png)](https://rocket.chat/docs/master/installing-and-updating/deployment-options/windows-server-2012-r2)
 
 ## Ansible
 Automated production-grade deployment in minutes, for RHEL / CentOS 7 or Ubuntu 14.04 LTS / 15.04:
@@ -232,7 +232,7 @@ It is a great solution for communities and companies wanting to privately host t
 - I18n - Supports 22 Languages
 - Hubot Friendly
 - Face to Face Video Conferencing (aka WebRTC)
-- Multi-users Video Group Chat
+- Multi-users Video Group Chat (experimental)
 - Audio calls
 - Multi-users Audio Conference
 - Screensharing
@@ -304,7 +304,7 @@ We are developing the APIs based on the competition, so stay tuned and you will 
 
 ## Documentation
 
-Checkout [Github Wiki](https://github.com/RocketChat/Rocket.Chat/wiki)
+Checkout [Rocket.Chat documentation](https://rocket.chat/docs/)
 
 ## License
 
@@ -327,11 +327,11 @@ cd Rocket.Chat
 meteor
 ```
 
-If you are not a developer and just want to run the server - see [deployment methods](https://github.com/RocketChat/Rocket.Chat/wiki#deployment).
+If you are not a developer and just want to run the server - see [deployment methods](https://rocket.chat/docs/master/installing-and-updating/deployment-options).
 
 ## Branching Model
 
-See [Branches and Releases](https://github.com/RocketChat/Rocket.Chat/wiki/Branches-and-Releases).
+See [Branches and Releases](https://rocket.chat/docs/master/developer-guides/branches-and-releases).
 
 It is based on [Gitflow Workflow](http://nvie.com/posts/a-successful-git-branching-model/), reference section below is derived from Vincent Driessen at nvie.
 
