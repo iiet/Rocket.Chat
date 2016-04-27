@@ -24,8 +24,9 @@
 				<div class="fields">
 					<div class='input-text active'>
 						{{#if username.ready}}
+							Po prostu kliknijcie button niżej :)
 							<span>
-								<input type="text" name='username' value="{{username.username}}" placeholder='{{_ "Username"}}' dir="auto"/>
+								<input type="text" name='username' readonly="true" value="{{username.username}}" placeholder='{{_ "Username"}}' dir="auto"/>
 							</span>
 							<i></i>
 						{{else}}
