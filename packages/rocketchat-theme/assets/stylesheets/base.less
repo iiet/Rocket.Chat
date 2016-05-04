@@ -1705,13 +1705,12 @@ a.github-fork {
 	top: 0;
 	bottom: 0;
 	left: @rooms-box-width;
-	right: 0;
+	right: 40px;
 	width: auto;
 	height: auto;
-	margin-right: 40px;
 	.transition(width .25s cubic-bezier(.5, 0, .1, 1));
 	&.flex-opened {
-		right: @flex-tab-width;
+		right: @flex-tab-width + 40px;
 		.flex-tab {
 			right: 40px;
 			.transform(translateX(0));
@@ -2784,6 +2783,7 @@ body:not(.is-cordova) {
 	border-left: 1px solid #eaeaea;
 	z-index: 130;
 	.tab-button {
+		position: relative;
 		cursor: pointer;
 		padding: 10px;
 		background: #FCFCFC;
@@ -2792,11 +2792,31 @@ body:not(.is-cordova) {
 		&:hover {
 			background: #EAEAEA;
 		}
+
+		.counter {
+			position: absolute;
+			background: #999;
+			font-size: 9px;
+			color: white;
+			width: 13px;
+			height: 13px;
+			border-radius: 50%;
+			line-height: 13px;
+			font-weight: bold;
+			right: 4px;
+			top: 4px;
+			text-align: center;
+		}
+
 		&.active {
 			background-color: #F4F4F4;
 			margin-left: -1px;
 			padding-left: 11px;
 			border-right: 3px solid #ff0000;
+
+			.counter {
+				margin-right: -3px;
+			}
 		}
 	}
 }
@@ -2919,6 +2939,15 @@ body:not(.is-cordova) {
 			left: 0;
 			width: 100%;
 			height: 100%;
+		}
+		> .title {
+			height: @header-min-height;
+			h2 {
+				padding: 0 20px;
+				font-size: 20px;
+				line-height: @header-min-height;
+				font-weight: 300;
+			}
 		}
 	}
 	footer {

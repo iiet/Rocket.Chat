@@ -82,7 +82,7 @@ rocketchat:ui-sidenav
 rocketchat:version
 rocketchat:webrtc
 #rocketchat:chatops
-#rocketchat:hubot
+#rocketchat:internal-hubot
 #rocketchat:irc
 
 konecty:change-case

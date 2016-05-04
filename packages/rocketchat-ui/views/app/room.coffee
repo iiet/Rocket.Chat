@@ -8,12 +8,6 @@ favoritesEnabled = ->
 	return RocketChat.settings.get 'Favorite_Rooms'
 
 Template.room.helpers
-	# showFormattingTips: ->
-	# 	return RocketChat.settings.get('Message_ShowFormattingTips') and (RocketChat.Markdown or RocketChat.Highlight)
-	# showMarkdown: ->
-	# 	return RocketChat.Markdown
-	# showHighlight: ->
-	# 	return RocketChat.Highlight
 	favorite: ->
 		sub = ChatSubscription.findOne { rid: this._id }, { fields: { f: 1 } }
 		return 'icon-star favorite-room' if sub?.f? and sub.f and favoritesEnabled
@@ -45,39 +39,11 @@ Template.room.helpers
 	uploading: ->
 		return Session.get 'uploading'
 
-	# usersTyping: ->
-	# 	users = MsgTyping.get @_id
-	# 	if users.length is 0
-	# 		return
-	# 	if users.length is 1
-	# 		return {
-	# 			multi: false
-	# 			selfTyping: MsgTyping.selfTyping.get()
-	# 			users: users[0]
-	# 		}
-
-	# 	# usernames = _.map messages, (message) -> return message.u.username
-
-	# 	last = users.pop()
-	# 	if users.length > 4
-	# 		last = t('others')
-	# 	# else
-	# 	usernames = users.join(', ')
-	# 	usernames = [usernames, last]
-	# 	return {
-	# 		multi: true
-	# 		selfTyping: MsgTyping.selfTyping.get()
-	# 		users: usernames.join " #{t 'and'} "
-	# 	}
-
 	roomName: ->
 		roomData = Session.get('roomData' + this._id)
 		return '' unless roomData
 
-		if roomData.t is 'd'
-			return ChatSubscription.findOne({ rid: this._id }, { fields: { name: 1 } })?.name
-		else
-			return roomData.name
+		return RocketChat.roomTypes.getRoomName roomData?.t, roomData
 
 	roomTopic: ->
 		roomData = Session.get('roomData' + this._id)
@@ -88,10 +54,7 @@ Template.room.helpers
 		roomData = Session.get('roomData' + this._id)
 		return '' unless roomData?.t
 
-		switch roomData.t
-			when 'd' then return 'icon-at'
-			when 'c' then return 'icon-hash'
-			when 'p' then return 'icon-lock'
+		return RocketChat.roomTypes.getIcon roomData?.t
 
 	userStatus: ->
 		roomData = Session.get('roomData' + this._id)

@@ -192,7 +192,7 @@ Template.message.onViewRendered = (context) ->
 					$nextNode.addClass('sequential')
 
 		if not nextNode?
-			templateInstance = if $('.messages-container')[0] then Blaze.getView($('.messages-container')[0])?.templateInstance() else null
+			templateInstance = if $('#chat-window-' + context.rid)[0] then Blaze.getView($('#chat-window-' + context.rid)[0])?.templateInstance() else null
 
 			if currentNode.classList.contains('own') is true
 				templateInstance?.atBottom = true
