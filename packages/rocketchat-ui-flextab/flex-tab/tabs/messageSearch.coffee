@@ -30,6 +30,9 @@ Template.messageSearch.helpers
 	ready: ->
 		return Template.instance().ready.get()
 
+	message: ->
+		return _.extend(this, { customClass: 'search' })
+
 Template.messageSearch.events
 	"keydown #message-search": (e) ->
 		if e.keyCode is 13
@@ -63,7 +66,7 @@ Template.messageSearch.events
 		dropDown = t.$("\##{message_id} .message-dropdown")
 		dropDown.show()
 
-	'click .load-more a': (e, t) ->
+	'click .load-more button': (e, t) ->
 		t.limit.set(t.limit.get() + 20)
 		t.search()
 

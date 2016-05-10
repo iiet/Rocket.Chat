@@ -75,10 +75,13 @@ Template.messageBox.events
 
 	'click .send-button': (event, instance) ->
 		input = instance.find('.input-message')
-		chatMessages[@_id].send(@_id, input)
+		chatMessages[@_id].send(@_id, input, =>
+			# fixes https://github.com/RocketChat/Rocket.Chat/issues/3037
+			# at this point, the input is cleared and ready for autogrow
+			input.updateAutogrow()
+			instance.isMessageFieldEmpty.set(chatMessages[@_id].isEmpty())
+		)
 		input.focus()
-		input.updateAutogrow()
-		instance.isMessageFieldEmpty.set(chatMessages[@_id].isEmpty())
 
 	'keyup .input-message': (event, instance) ->
 		chatMessages[@_id].keyup(@_id, event, instance)
@@ -103,11 +106,11 @@ Template.messageBox.events
 	'keydown .input-message': (event) ->
 		chatMessages[@_id].keydown(@_id, event, Template.instance())
 
-	"click .editing-commands-cancel > a": (e) ->
+	"click .editing-commands-cancel > button": (e) ->
 		chatMessages[@_id].clearEditing()
 
-	"click .editing-commands-save > a": (e) ->
-		chatMessages[@_id].send(@_id, chatMessages.input)
+	"click .editing-commands-save > button": (e) ->
+		chatMessages[@_id].send(@_id, chatMessages[@_id].input)
 
 	'change .message-form input[type=file]': (event, template) ->
 		e = event.originalEvent or event

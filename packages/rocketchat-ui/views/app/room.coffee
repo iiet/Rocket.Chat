@@ -200,14 +200,14 @@ Template.room.events
 	"touchcancel .message": (e, t) ->
 		Meteor.clearTimeout t.touchtime
 
-	"click .upload-progress-text > a": (e) ->
+	"click .upload-progress-text > button": (e) ->
 		e.preventDefault();
 		Session.set "uploading-cancel-#{this.id}", true
 
-	"click .unread-bar > a.mark-read": ->
+	"click .unread-bar > button.mark-read": ->
 		readMessage.readNow(true)
 
-	"click .unread-bar > a.jump-to": (e, t) ->
+	"click .unread-bar > button.jump-to": (e, t) ->
 		_id = t.data._id
 		message = RoomHistoryManager.getRoom(_id)?.firstUnread.get()
 		if message?
@@ -267,7 +267,7 @@ Template.room.events
 			$('#room-title-field').focus().select()
 		, 10
 
-	"click .flex-tab .user-image > a" : (e, instance) ->
+	"click .flex-tab .user-image > button" : (e, instance) ->
 		RocketChat.TabBar.openFlex()
 		instance.setUserDetail @username
 
@@ -285,7 +285,7 @@ Template.room.events
 				RoomHistoryManager.getMoreNext(@_id)
 	, 200
 
-	'click .load-more > a': ->
+	'click .load-more > button': ->
 		RoomHistoryManager.getMore(@_id)
 
 	'click .new-message': (e) ->
@@ -378,7 +378,7 @@ Template.room.events
 	'load img': (e, template) ->
 		template.sendToBottomIfNecessary?()
 
-	'click .jump-recent .jump-link': (e, template) ->
+	'click .jump-recent button': (e, template) ->
 		e.preventDefault()
 		template.atBottom = true
 		RoomHistoryManager.clear(template?.data?._id)

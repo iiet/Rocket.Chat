@@ -1,9 +1,11 @@
 class @ChatMessages
 	init: (node) ->
 		this.editing = {}
+		this.records  = {}
 		this.messageMaxSize = RocketChat.settings.get('Message_MaxAllowedSize')
 		this.wrapper = $(node).find(".wrapper")
 		this.input = $(node).find(".input-message").get(0)
+		this.$input = $(this.input)
 		this.hasValue = new ReactiveVar false
 		this.bindEvents()
 		return
@@ -12,23 +14,6 @@ class @ChatMessages
 		dif = 60 + $(".messages-container").find("footer").outerHeight()
 		$(".messages-box").css
 			height: "calc(100% - #{dif}px)"
-
-	toPrevMessage: ->
-		msgs = this.wrapper.get(0).querySelectorAll(".own:not(.system)")
-		if msgs.length
-			if this.editing.element
-				if msgs[this.editing.index - 1]
-					this.edit msgs[this.editing.index - 1], this.editing.index - 1
-			else
-				this.edit msgs[msgs.length - 1], msgs.length - 1
-
-	toNextMessage: ->
-		if this.editing.element
-			msgs = this.wrapper.get(0).querySelectorAll(".own:not(.system)")
-			if msgs[this.editing.index + 1]
-				this.edit msgs[this.editing.index + 1], this.editing.index + 1
-			else
-				this.clearEditing()
 
 	getEditingIndex: (element) ->
 		msgs = this.wrapper.get(0).querySelectorAll(".own:not(.system)")
@@ -39,9 +24,65 @@ class @ChatMessages
 			index++
 		return -1
 
+	recordInputAsDraft: () ->
+		id = this.editing.id
+
+		message = this.getMessageById id
+		record = this.records[id] || {}
+		draft = this.input.value
+
+		if(draft is message.msg)
+			this.clearCurrentDraft()
+		else
+			record.draft = draft
+			this.records[id] = record
+
+	getMessageDraft: (id) ->
+		return this.records[id]
+
+	clearMessageDraft: (id) ->
+		delete this.records[id]
+
+	clearCurrentDraft: () ->
+		this.clearMessageDraft this.editing.id
+
+	resetToDraft: (id) ->
+		message = this.getMessageById id
+
+		old_value = this.input.value
+		this.input.value = message.msg
+
+		return old_value isnt message.msg
+
+	getMessageById: (id) ->
+		return ChatMessage.findOne(id)
+
+	toPrevMessage: ->
+		index = this.editing.index
+		this.editByIndex if index? then index - 1 else undefined
+
+	toNextMessage: ->
+		index = this.editing.index
+		this.clearEditing() unless this.editByIndex index + 1
+
+	editByIndex: (index) ->
+		return false if not this.editing.element and index?
+
+		msgs = this.wrapper.get(0).querySelectorAll(".own:not(.system)")
+		index = msgs.length - 1 if not index?
+
+		return false unless msgs[index]
+
+		element = msgs[index]
+		this.edit element, index
+
+		return true
+
 	edit: (element, index) ->
-		id = element.getAttribute("id")
-		message = ChatMessage.findOne { _id: id }
+		index = this.getEditingIndex(element) if not index?
+
+		message = this.getMessageById element.getAttribute("id")
+
 		hasPermission = RocketChat.authz.hasAtLeastOnePermission('edit-message', message.rid)
 		editAllowed = RocketChat.settings.get 'Message_AllowEditing'
 		editOwn = message?.u?._id is Meteor.userId()
@@ -56,33 +97,56 @@ class @ChatMessages
 			if currentTsDiff > blockEditInMinutes
 				return
 
+		msg = this.getMessageDraft(message._id)?.draft
+		msg = message.msg unless msg?
+
+		editingNext = this.editing.index < index
+
+		old_input = this.input.value
+
 		this.clearEditing()
-		this.input.value = message.msg
+
 		this.hasValue.set true
 		this.editing.element = element
-		this.editing.index = index or this.getEditingIndex(element)
-		this.editing.id = id
+		this.editing.index = index
+		this.editing.id = message._id
 		element.classList.add("editing")
 		this.input.classList.add("editing")
-		$(this.input).closest('.message-form').addClass('editing');
-		setTimeout =>
-			this.input.focus()
-		, 5
+		this.$input.closest('.message-form').addClass('editing')
+
+		this.input.focus()
+
+		this.input.value = msg
+
+		cursor_pos = if editingNext then 0 else -1
+		this.$input.setCursorPosition(cursor_pos)
 
 	clearEditing: ->
 		if this.editing.element
+			this.recordInputAsDraft()
+
 			this.editing.element.classList.remove("editing")
 			this.input.classList.remove("editing")
-			$(this.input).closest('.message-form').removeClass('editing');
-			this.editing.id = null
-			this.editing.element = null
-			this.editing.index = null
+			this.$input.closest('.message-form').removeClass('editing')
+			delete this.editing.id
+			delete this.editing.element
+			delete this.editing.index
+
 			this.input.value = this.editing.saved or ""
+			cursor_pos = this.editing.savedCursor ? -1
+			this.$input.setCursorPosition(cursor_pos)
+
 			this.hasValue.set this.input.value isnt ''
 		else
 			this.editing.saved = this.input.value
+			this.editing.savedCursor = this.input.selectionEnd
 
-	send: (rid, input) ->
+	###*
+	# * @param {string} rim room ID
+	# * @param {Element} input DOM element
+	# * @param {function?} done callback
+	###
+	send: (rid, input, done = ->) ->
 		if _.trim(input.value) isnt ''
 			readMessage.enable()
 			readMessage.readNow()
@@ -98,6 +162,7 @@ class @ChatMessages
 				if this.isMessageTooLong(msgObject.msg)
 					return toastr.error t('Message_too_long')
 
+				this.clearCurrentDraft()
 				if this.editing.id
 					this.update(this.editing.id, rid, msgObject.msg)
 					return
@@ -117,6 +182,46 @@ class @ChatMessages
 						return
 
 				Meteor.call 'sendMessage', msgObject
+				done()
+
+		# If edited message was emptied we ask for deletion
+		else if this.editing.element
+			message = this.getMessageById this.editing.id
+
+			# Restore original message in textbox in case delete is canceled
+			this.resetToDraft this.editing.id
+
+			this.confirmDeleteMsg message, done
+
+	confirmDeleteMsg: (message, done = ->) ->
+		return if RocketChat.MessageTypes.isSystemMessage(message)
+		swal {
+			title: t('Are_you_sure')
+			text: t('You_will_not_be_able_to_recover')
+			type: 'warning'
+			showCancelButton: true
+			confirmButtonColor: '#DD6B55'
+			confirmButtonText: t('Yes_delete_it')
+			cancelButtonText: t('Cancel')
+			closeOnConfirm: false
+			html: false
+		}, =>
+			swal
+				title: t('Deleted')
+				text: t('Your_entry_has_been_deleted')
+				type: 'success'
+				timer: 1000
+				showConfirmButton: false
+
+			if this.editing.id is message._id
+				this.clearEditing message
+			this.deleteMsg message
+
+			this.$input.focus()
+			done()
+
+		# In order to avoid issue "[Callback not called when still animating](https://github.com/t4t5/sweetalert/issues/528)"
+		$('.sweet-alert').addClass 'visible'
 
 	deleteMsg: (message) ->
 		blockDeleteInMinutes = RocketChat.settings.get 'Message_AllowDeleting_BlockDeleteInMinutes'
@@ -129,7 +234,7 @@ class @ChatMessages
 
 		Meteor.call 'deleteMessage', message, (error, result) ->
 			if error
-				return handleError(error);
+				return handleError(error)
 
 	pinMsg: (message) ->
 		message.pinned = true
@@ -205,39 +310,54 @@ class @ChatMessages
 
 	keydown: (rid, event) ->
 		input = event.currentTarget
+		$input = $(input)
 		k = event.which
 		this.resize(input)
-		if k is 13 and not event.shiftKey
+		if k is 13 and not event.shiftKey # Enter without shift
 			event.preventDefault()
 			event.stopPropagation()
 			this.send(rid, input)
 			return
 
-		if k is 9
+		if k is 9 # Tab
 			event.preventDefault()
 			event.stopPropagation()
 			@tryCompletion input
 
-		if k is 27
-			if this.editing.id
+		if k is 27 # Escape
+			if this.editing.index?
+				record = this.getMessageDraft(this.editing.id)
+
+				# If resetting did nothing then edited message is same as original
+				unless this.resetToDraft this.editing.id
+					this.clearCurrentDraft()
+					this.clearEditing()
+
 				event.preventDefault()
 				event.stopPropagation()
-				this.clearEditing()
 				return
 		else if k is 38 or k is 40 # Arrow Up or down
 			return true if event.shiftKey
 
-			return true if $(input).val().length and !this.editing?.id
+			cursor_pos = input.selectionEnd
 
-			if k is 38
-				return if input.value.slice(0, input.selectionStart).match(/[\n]/) isnt null
-				this.toPrevMessage()
-			else
-				return if input.value.slice(input.selectionEnd, input.value.length).match(/[\n]/) isnt null
-				this.toNextMessage()
+			if k is 38 # Arrow Up
+				if cursor_pos is 0
+					this.toPrevMessage()
+				else if not event.altKey
+					return true
 
-			event.preventDefault()
-			event.stopPropagation()
+				this.$input.setCursorPosition(0) if event.altKey
+
+			else # Arrow Down
+				if cursor_pos is input.value.length
+					this.toNextMessage()
+				else if not event.altKey
+					return true
+
+				this.$input.setCursorPosition(-1) if event.altKey
+
+			return false
 
 		# ctrl (command) + shift + k -> clear room messages
 		else if k is 75 and ((navigator?.platform?.indexOf('Mac') isnt -1 and event.metaKey and event.shiftKey) or (navigator?.platform?.indexOf('Mac') is -1 and event.ctrlKey and event.shiftKey))

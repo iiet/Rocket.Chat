@@ -12,7 +12,7 @@ Template.livechatCurrentChats.helpers({
 
 Template.livechatCurrentChats.events({
 	'click .row-link'() {
-		FlowRouter.go('live', { name: this.name });
+		FlowRouter.go('live', { code: this.code });
 	}
 });
 

@@ -1,6 +1,8 @@
 /* global renderMessageBody:true */
 /* exported renderMessageBody */
 
+var singleEmojiCheck;
+
 renderMessageBody = function(msg) {
 	var message;
 
@@ -13,10 +15,8 @@ renderMessageBody = function(msg) {
 	message = RocketChat.callbacks.run('renderMessage', msg);
 
 	if (message.tokens && message.tokens.length > 0) {
-		for (var i = 0, len = message.tokens.length; i < len; i++) {
-			let token = message.tokens[i];
-			token.text = token.text.replace(/([^\$])(\$[^\$])/gm, '$1$$$2');
-			message.html = message.html.replace(token.token, token.text);
+		for (let {token, text} of message.tokens) {
+			message.html = message.html.replace(token, () => text); // Uses lambda so doesn't need to escape $
 		}
 	}
 
@@ -32,7 +32,7 @@ renderMessageBody = function(msg) {
 /**
  *Checks to see if a message contains only an emoji span
  *@para {msg} some html message
- *@return {false} the html message either doesn't 
+ *@return {false} the html message either doesn't
  *contain an emoji span, or contains other characters
  */
 singleEmojiCheck = function(msg) {
