@@ -248,18 +248,20 @@ Template.main.onRendered ->
 				$('.input-message').focus()
 		, 100
 
-	$(window).on('mouseleave', (e) ->
-		elem = $(e.fromElement)
-		avatarElem = elem.find('button.thumb')
-		if avatarElem.attr('data-username')
-			RocketChat.tooltip.hide();
-	)
+	Tracker.autorun ->
+		prefs = Meteor.user()?.settings?.preferences
+		if prefs?.hideUsernames
+			$(document.body).on('mouseleave', 'button.thumb', (e) ->
+				RocketChat.tooltip.hide();
+			)
 
-	$(window).on('mouseenter', (e) ->
-		elem = $(e.fromElement)
-		avatarElem = elem.find('button.thumb')
-		username = avatarElem.attr('data-username')
-		if username
-			e.stopPropagation()
-			RocketChat.tooltip.showElement($('<span>').text(username), avatarElem)
-	)
+			$(document.body).on('mouseenter', 'button.thumb', (e) ->
+				avatarElem = $(e.currentTarget)
+				username = avatarElem.attr('data-username')
+				if username
+					e.stopPropagation()
+					RocketChat.tooltip.showElement($('<span>').text(username), avatarElem)
+			)
+		else
+			$(document.body).off('mouseenter', 'button.thumb')
+			$(document.body).off('mouseleave', 'button.thumb')
