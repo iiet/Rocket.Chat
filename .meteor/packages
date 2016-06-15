@@ -86,6 +86,7 @@ rocketchat:ui-message
 rocketchat:ui-sidenav
 rocketchat:version
 rocketchat:webrtc
+rocketchat:videobridge
 #rocketchat:chatops
 #rocketchat:internal-hubot
 #rocketchat:irc
