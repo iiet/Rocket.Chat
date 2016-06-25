@@ -137,6 +137,7 @@ rocketchat:iframe-login@1.0.0
 rocketchat:integrations@0.0.1
 rocketchat:katex@0.0.1
 rocketchat:lib@0.0.1
+rocketchat:livechat@0.0.1
 rocketchat:logger@0.0.1
 rocketchat:mailer@0.0.1
 rocketchat:markdown@0.0.1
@@ -162,6 +163,7 @@ rocketchat:slashcommands-me@0.0.1
 rocketchat:slashcommands-mute@0.0.1
 rocketchat:slashcommands-topic@0.0.1
 rocketchat:slashcommands-unarchive@0.0.1
+rocketchat:sms@0.0.1
 rocketchat:spotify@0.0.1
 rocketchat:statistics@0.0.1
 rocketchat:streamer@0.4.0
@@ -190,7 +192,6 @@ spacebars@1.0.7
 spacebars-compiler@1.0.7
 srp@1.0.4
 standard-minifiers@1.0.2
-steffo:meteor-accounts-saml@0.0.1
 tap:i18n@1.8.2
 templating@1.1.5
 templating-tools@1.0.0
