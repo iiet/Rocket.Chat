@@ -87,6 +87,7 @@ rocketchat:ui-login
 rocketchat:ui-master
 rocketchat:ui-message
 rocketchat:ui-sidenav
+rocketchat:ui-vrecord
 rocketchat:version
 rocketchat:webrtc
 rocketchat:videobridge
@@ -101,7 +102,6 @@ konecty:multiple-instances-status
 konecty:nrr
 konecty:user-presence
 
-arunoda:streams
 chrismbeckett:toastr
 dispatch:run-as-user
 francocatena:status
@@ -132,3 +132,4 @@ yasaricli:slugify
 yasinuslu:blaze-meta
 meteorhacks:kadira
 rocketchat:livechat
+rocketchat:slashcommands-open
