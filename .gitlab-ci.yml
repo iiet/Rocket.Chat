@@ -15,4 +15,5 @@ before_script:
 push_to_github:
   script:
     - git remote add backup git@github.com:iiet/iiet-chat.git
+    - git config --global push.default simple
     - git push backup
