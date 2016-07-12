@@ -13,8 +13,12 @@ before_script:
   - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
   
 push_to_github:
+  only:
+    - develop
+    - master
   script:
     - git remote add backup git@github.com:iiet/iiet-chat.git || true
     - git config --global push.default simple
     - git checkout "$CI_BUILD_REF_NAME"
+    - git pull
     - git push backup
