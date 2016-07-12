@@ -1,4 +1,4 @@
-#IIET-Chat instance of Rocket.Chat
+# IIET-Chat instance of Rocket.Chat
 
 ![Rocket.Chat logo](https://rocket.chat/images/logo/logo-dark.svg?v3)
 
