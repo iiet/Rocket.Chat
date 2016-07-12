@@ -22,3 +22,5 @@ push_to_github:
     - git checkout "$CI_BUILD_REF_NAME"
     - git pull
     - git push backup
+    - git push backup --tags
+
