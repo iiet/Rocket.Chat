@@ -16,4 +16,5 @@ push_to_github:
   script:
     - git remote add backup git@github.com:iiet/iiet-chat.git || true
     - git config --global push.default simple
+    - git checkout "$CI_BUILD_REF_NAME"
     - git push backup
