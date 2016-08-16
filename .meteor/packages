@@ -38,6 +38,7 @@ rocketchat:autolinker
 rocketchat:channel-settings
 rocketchat:channel-settings-mail-messages
 rocketchat:colors
+rocketchat:crowd
 rocketchat:custom-oauth
 rocketchat:emojione
 rocketchat:favico
@@ -134,3 +135,4 @@ yasinuslu:blaze-meta
 meteorhacks:kadira
 rocketchat:livechat
 rocketchat:slashcommands-open
+rocketchat:mapview
