@@ -21,6 +21,6 @@ push_to_github:
     - git config --global push.default simple
     - git checkout "$CI_BUILD_REF_NAME"
     - git pull
-    - git push backup
+    - git push backup --force
     - git push backup --tags
 
