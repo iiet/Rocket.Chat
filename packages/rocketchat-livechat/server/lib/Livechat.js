@@ -41,11 +41,15 @@ RocketChat.Livechat = {
 		}
 
 		if (room == null) {
-			// if no department selected verify if there is at least one active and choose one randomly
+			// if no department selected verify if there is at least one active and pick the first
 			if (!guest.department) {
 				var departments = RocketChat.models.LivechatDepartment.findEnabledWithAgents();
 				if (departments.count() > 0) {
-					guest.department = departments.fetch()[0]._id;
+					departments.forEach((dept) => {
+						if (!guest.department && dept.showOnRegistration) {
+							guest.department = dept._id;
+						}
+					});
 				}
 			}
 
@@ -123,7 +127,8 @@ RocketChat.Livechat = {
 					username: username,
 					globalRoles: ['livechat-guest'],
 					department: department,
-					type: 'visitor'
+					type: 'visitor',
+					joinDefaultChannels: false
 				};
 
 				if (this.connection) {
