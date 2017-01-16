@@ -5,10 +5,10 @@ import flexTab from '../pageobjects/flex-tab.page';
 import mainContent from '../pageobjects/main-content.page';
 import sideNav from '../pageobjects/side-nav.page';
 
-import {username, email, password} from '../test-data/user.js';
-import {checkIfUserIsValid, publicChannelCreated, setPublicChannelCreated} from '../test-data/checks';
-import {publicChannelName} from '../test-data/channel.js';
-import {targetUser} from '../test-data/interactions.js';
+import {username, email, password} from '../data/user.js';
+import {checkIfUserIsValid, publicChannelCreated, setPublicChannelCreated} from '../data/checks';
+import {publicChannelName} from '../data/channel.js';
+import {targetUser} from '../data/interactions.js';
 
 describe('channel usage', ()=> {
 	before(() => {
@@ -16,19 +16,26 @@ describe('channel usage', ()=> {
 		if (!publicChannelCreated) {
 			sideNav.createChannel(publicChannelName, false, false);
 			setPublicChannelCreated(true);
-			console.log('	public channel not found, creating one...');
+			console.log('public channel not found, creating one...');
 		}
 		sideNav.openChannel(publicChannelName);
 	});
 
 	describe('Adding a user to the room', () => {
 		before(()=> {
+			if (flexTab.toastAlert.isVisible()) {
+				flexTab.dismissToast();
+				flexTab.toastAlert.waitForVisible(5000, true);
+			}
 			flexTab.membersTab.waitForVisible();
 			flexTab.membersTab.click();
 		});
 
 		after(()=> {
-			browser.pause(500);
+			if (flexTab.toastAlert.isVisible()) {
+				flexTab.dismissToast();
+				flexTab.toastAlert.waitForVisible(5000, true);
+			}
 			flexTab.membersTab.waitForVisible();
 			flexTab.membersTab.click();
 		});
@@ -42,15 +49,20 @@ describe('channel usage', ()=> {
 	describe('Channel settings', ()=> {
 		describe('Channel name edit', ()=> {
 			before(()=> {
+				if (flexTab.toastAlert.isVisible()) {
+					flexTab.dismissToast();
+					flexTab.toastAlert.waitForVisible(5000, true);
+				}
 				flexTab.channelTab.waitForVisible();
 				flexTab.channelTab.click();
 			});
 
 			after(()=> {
-				flexTab.dismissToast();
-				browser.pause(300);
-				flexTab.channelTab.waitForVisible();
-				flexTab.channelTab.click();
+				if (flexTab.toastAlert.isVisible()) {
+					flexTab.dismissToast();
+					flexTab.toastAlert.waitForVisible(5000, true);
+				}
+				flexTab.channelTab.waitForVisible(5000);
 			});
 
 			it('should show the old name', ()=> {
@@ -70,11 +82,9 @@ describe('channel usage', ()=> {
 
 			it('save the name', ()=> {
 				flexTab.editNameSave.click();
-
 			});
 
 			it('should show the new name', ()=> {
-				browser.pause(500);
 				var channelName = sideNav.getChannelFromList('NAME-EDITED-'+publicChannelName);
 				channelName.getText().should.equal('NAME-EDITED-'+publicChannelName);
 			});
@@ -87,14 +97,15 @@ describe('channel usage', ()=> {
 			});
 
 			after(()=> {
-				flexTab.dismissToast();
-				browser.pause(300);
+				if (flexTab.toastAlert.isVisible()) {
+					flexTab.dismissToast();
+					flexTab.toastAlert.waitForVisible(5000, true);
+				}
 				flexTab.channelTab.waitForVisible();
 				flexTab.channelTab.click();
 			});
 
 			it('click the edit topic', ()=> {
-				browser.pause(500);
 				flexTab.editTopicBtn.waitForVisible(5000);
 				flexTab.editTopicBtn.click();
 			});
@@ -120,14 +131,15 @@ describe('channel usage', ()=> {
 			});
 
 			after(()=> {
-				flexTab.dismissToast();
-				browser.pause(300);
+				if (flexTab.toastAlert.isVisible()) {
+					flexTab.dismissToast();
+					flexTab.toastAlert.waitForVisible(5000, true);
+				}
 				flexTab.channelTab.waitForVisible();
 				flexTab.channelTab.click();
 			});
 
 			it('click the edit description', ()=> {
-				browser.pause(500);
 				flexTab.editDescriptionBtn.waitForVisible();
 				flexTab.editDescriptionBtn.click();
 			});
@@ -150,11 +162,19 @@ describe('channel usage', ()=> {
 	describe('Members tab usage', () => {
 		describe('Owner added', () => {
 			before(()=> {
+				if (flexTab.toastAlert.isVisible()) {
+					flexTab.dismissToast();
+					flexTab.toastAlert.waitForVisible(5000, true);
+				}
 				flexTab.membersTab.waitForVisible();
 				flexTab.membersTab.click();
 			});
 
 			after(()=> {
+				if (flexTab.toastAlert.isVisible()) {
+					flexTab.dismissToast();
+					flexTab.toastAlert.waitForVisible(5000, true);
+				}
 				flexTab.membersTab.waitForVisible();
 				flexTab.membersTab.click();
 			});
@@ -164,7 +184,10 @@ describe('channel usage', ()=> {
 			});
 
 			it('dismiss the toast', ()=> {
-				flexTab.dismissToast();
+				if (flexTab.toastAlert.isVisible()) {
+					flexTab.dismissToast();
+					flexTab.toastAlert.waitForVisible(5000, true);
+				}
 			});
 
 			it('the last message should be a subscription role added', ()=> {
@@ -178,18 +201,32 @@ describe('channel usage', ()=> {
 
 		describe('Moderator added', () => {
 			before(()=> {
+				if (flexTab.toastAlert.isVisible()) {
+					flexTab.dismissToast();
+					flexTab.toastAlert.waitForVisible(5000, true);
+				}
 				flexTab.membersTab.waitForVisible();
 				flexTab.membersTab.click();
 			});
 
 			after(()=> {
+				if (flexTab.toastAlert.isVisible()) {
+					flexTab.dismissToast();
+					flexTab.toastAlert.waitForVisible(5000, true);
+				}
 				flexTab.membersTab.waitForVisible();
 				flexTab.membersTab.click();
 			});
 
 			it('sets rocket cat as moderator', ()=> {
-				browser.pause(1000);
 				flexTab.setUserModerator(targetUser);
+			});
+
+			it('dismiss the toast', ()=> {
+				if (flexTab.toastAlert.isVisible()) {
+					flexTab.dismissToast();
+					flexTab.toastAlert.waitForVisible(5000, true);
+				}
 			});
 
 			it('the last message should be a subscription role added', ()=> {
@@ -201,9 +238,9 @@ describe('channel usage', ()=> {
 			});
 		});
 
-		describe('User muted', () => {
+		describe.skip('User muted', () => {
 			before(()=> {
-				flexTab.membersTab.waitForVisible();
+				flexTab.membersTab.waitForVisible(5000);
 				flexTab.membersTab.click();
 			});
 
@@ -213,7 +250,6 @@ describe('channel usage', ()=> {
 			});
 
 			it('mute rocket cat', ()=> {
-				browser.pause(5000);
 				flexTab.muteUser(targetUser);
 			});
 

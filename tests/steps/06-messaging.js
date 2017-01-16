@@ -5,10 +5,10 @@ import mainContent from '../pageobjects/main-content.page';
 import sideNav from '../pageobjects/side-nav.page';
 
 //test data imports
-import {username, email, password} from '../test-data/user.js';
-import {publicChannelName, privateChannelName} from '../test-data/channel.js';
-import {targetUser, imgURL} from '../test-data/interactions.js';
-import {checkIfUserIsValid, publicChannelCreated, privateChannelCreated, directMessageCreated, setPublicChannelCreated, setPrivateChannelCreated, setDirectMessageCreated} from '../test-data/checks';
+import {username, email, password} from '../data/user.js';
+import {publicChannelName, privateChannelName} from '../data/channel.js';
+import {targetUser, imgURL} from '../data/interactions.js';
+import {checkIfUserIsValid, publicChannelCreated, privateChannelCreated, directMessageCreated, setPublicChannelCreated, setPrivateChannelCreated, setDirectMessageCreated} from '../data/checks';
 
 
 //Test data
@@ -40,7 +40,6 @@ function messagingTest() {
 
 	describe('fileUpload', ()=> {
 		after(() => {
-			browser.pause(3000);
 		});
 		it('send a attachment', () => {
 			mainContent.fileUpload(imgURL);
@@ -66,8 +65,30 @@ function messagingTest() {
 			mainContent.popupFileTitle.isVisible().should.be.true;
 		});
 
+		it('should show the file name input', () => {
+			mainContent.popupFileName.isVisible().should.be.true;
+		});
+
+		it('should fill the file name input', () => {
+			mainContent.popupFileName.setValue('File Name');
+		});
+
+		it('should show the file name input', () => {
+			mainContent.popupFileDescription.isVisible().should.be.true;
+		});
+
+		it('should fill the file name input', () => {
+			mainContent.popupFileDescription.setValue('File Description');
+		});
+
 		it('click the confirm', () => {
 			mainContent.popupFileConfirmBtn.click();
+			mainContent.popupFileConfirmBtn.waitForVisible(5000, true);
+		});
+
+		it('should show the file in the message', () => {
+			mainContent.lastMessageDesc.waitForVisible(10000);
+			mainContent.lastMessageDesc.getText().should.equal('File Description');
 		});
 	});
 }
@@ -80,11 +101,12 @@ function messageActionsTest() {
 		describe('Message Actions Render', ()=> {
 			before(() => {
 				mainContent.openMessageActionMenu();
-				browser.pause(1000);
 			});
 
 			after(() => {
+				browser.pause(100);
 				mainContent.selectAction('close');
+				mainContent.messageActionMenu.waitForVisible(5000, true);
 			});
 
 			it('should show the message action menu', () => {
@@ -177,6 +199,7 @@ function messageActionsTest() {
 				it('delete the message', () => {
 					mainContent.selectAction('delete');
 					mainContent.popupFileConfirmBtn.click();
+					browser.waitForVisible('.sweet-overlay', 3000, true);
 				});
 
 				it('should not show the deleted message', () => {
@@ -188,7 +211,6 @@ function messageActionsTest() {
 				const message = 'Message for quote Tests - ' + Date.now();
 
 				before(() => {
-					browser.pause(2000);
 					mainContent.sendMessage(message);
 					mainContent.openMessageActionMenu();
 				});
@@ -242,13 +264,9 @@ function messageActionsTest() {
 
 describe('Messaging in different channels', () => {
 	before(()=>{
-		browser.pause(3000);
 		checkIfUserIsValid(username, email, password);
 		sideNav.getChannelFromList('general').waitForExist(5000);
 		sideNav.openChannel('general');
-	});
-	after(()=>{
-		browser.pause(1000);
 	});
 
 
