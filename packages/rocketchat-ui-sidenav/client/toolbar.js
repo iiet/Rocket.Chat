@@ -1,9 +1,13 @@
+
 /* global menu */
+import _ from 'underscore';
+
 let isLoading;
 let filterText = '';
 let usernamesFromClient;
 let resultsFromClient;
 
+const selectorSearch = '.toolbar__search .rc-input__element';
 Meteor.startup(() => {
 	isLoading = new ReactiveVar(false);
 });
@@ -11,14 +15,14 @@ Meteor.startup(() => {
 const toolbarSearch = {
 	shortcut: false,
 	clear() {
-		const $inputMessage = $('textarea.input-message');
+		const $inputMessage = $('.js-input-message');
 
 		if (0 === $inputMessage.length) {
 			return;
 		}
 
 		$inputMessage.focus();
-		$('.toolbar-search__input').val('');
+		$(selectorSearch).val('');
 
 		if (this.shortcut) {
 			menu.close();
@@ -26,7 +30,8 @@ const toolbarSearch = {
 	},
 	focus(fromShortcut) {
 		menu.open();
-		$('.toolbar-search__input').focus();
+		$('.toolbar').css('display', 'block');
+		$(selectorSearch).focus();
 		this.shortcut = fromShortcut;
 	}
 };
@@ -58,17 +63,24 @@ const getFromServer = (cb, type) => {
 				resultsFromServer.push({
 					_id: results.users[i]._id,
 					t: 'd',
-					name: results.users[i].username
+					name: results.users[i].username,
+					fname: results.users[i].name
 				});
 			}
 		}
 
 		if (roomsLength) {
 			for (let i = 0; i < roomsLength; i++) {
+				const alreadyOnClient = resultsFromClient.find(item => item._id === results.rooms[i]._id);
+				if (alreadyOnClient) {
+					continue;
+				}
+
 				resultsFromServer.push({
 					_id: results.rooms[i]._id,
 					t: results.rooms[i].t,
-					name: results.rooms[i].name
+					name: results.rooms[i].name,
+					lastMessage: results.rooms[i].lastMessage
 				});
 			}
 		}
@@ -82,21 +94,18 @@ const getFromServer = (cb, type) => {
 const getFromServerDebounced = _.debounce(getFromServer, 500);
 
 Template.toolbar.helpers({
-	canCreate() {
-		return RocketChat.authz.hasAtLeastOnePermission(['create-c', 'create-p']);
-	},
 	results() {
 		return Template.instance().resultsList.get();
 	},
 	getPlaceholder() {
-		var placeholder = TAPi18n.__('Search');
+		let placeholder = TAPi18n.__('Search');
 
 		if (!Meteor.Device.isDesktop()) {
 			return placeholder;
 		} else if (window.navigator.platform.toLowerCase().includes('mac')) {
-			placeholder = placeholder+' (CMD+K)';
+			placeholder = `${ placeholder } (\u2318+K)`;
 		} else {
-			placeholder = placeholder+' (Ctrl+K)';
+			placeholder = `${ placeholder } (\u2303+K)`;
 		}
 
 		return placeholder;
@@ -112,16 +121,17 @@ Template.toolbar.helpers({
 
 		const config = {
 			cls: 'search-results-list',
-			collection: RocketChat.models.Subscriptions,
+			collection: Meteor.userId() ? RocketChat.models.Subscriptions : RocketChat.models.Rooms,
 			template: 'toolbarSearchList',
+			sidebar: true,
 			emptyTemplate: 'toolbarSearchListEmpty',
-			input: '.toolbar-search__input',
+			input: '.toolbar__search .rc-input__element',
 			cleanOnEnter: true,
-			closeOnEsc: false,
+			closeOnEsc: true,
 			blurOnSelectItem: true,
-			isLoading: isLoading,
-			open: open,
-			getFilter: function(collection, filter, cb) {
+			isLoading,
+			open,
+			getFilter(collection, filter, cb) {
 				filterText = filter;
 
 				const type = {
@@ -135,24 +145,37 @@ Template.toolbar.helpers({
 					}
 				};
 
-				if (filterText[0] === '#') {
+				if (!Meteor.userId()) {
+					query._id = query.rid;
+					delete query.rid;
+				}
+				const searchForChannels = filterText[0] === '#';
+				const searchForDMs = filterText[0] === '@';
+				if (searchForChannels) {
 					filterText = filterText.slice(1);
 					type.users = false;
 					query.t = 'c';
 				}
 
-				if (filterText[0] === '@') {
+				if (searchForDMs) {
 					filterText = filterText.slice(1);
 					type.rooms = false;
 					query.t = 'd';
 				}
 
-				query.name = new RegExp((RegExp.escape(filterText)), 'i');
+				const searchQuery = new RegExp((RegExp.escape(filterText)), 'i');
+				query.$or = [
+					{ name: searchQuery },
+					{ fname: searchQuery }
+				];
 
 				resultsFromClient = collection.find(query, {limit: 20, sort: {unread: -1, ls: -1}}).fetch();
 
 				const resultsFromClientLength = resultsFromClient.length;
-				usernamesFromClient = [Meteor.user().username];
+				const user = Meteor.users.findOne(Meteor.userId(), {fields: {name: 1, username:1}});
+				if (user) {
+					usernamesFromClient = [user];
+				}
 
 				for (let i = 0; i < resultsFromClientLength; i++) {
 					if (resultsFromClient[i].t === 'd') {
@@ -163,13 +186,13 @@ Template.toolbar.helpers({
 				cb(resultsFromClient);
 
 				// Use `filter` here to get results for `#` or `@` filter only
-				if (filter.trim() !== '' && resultsFromClient.length < 20) {
+				if (resultsFromClient.length < 20) {
 					getFromServerDebounced(cb, type);
 				}
 			},
 
-			getValue: function(_id, collection, records) {
-				const doc = _.findWhere(records, {_id: _id});
+			getValue(_id, collection, records) {
+				const doc = _.findWhere(records, {_id});
 
 				RocketChat.roomTypes.openRouteLink(doc.t, doc, FlowRouter.current().queryParams);
 				menu.close();
@@ -181,38 +204,42 @@ Template.toolbar.helpers({
 });
 
 Template.toolbar.events({
-	'keyup .toolbar-search__input'(e) {
+	'submit form'(e) {
+		e.preventDefault();
+		return false;
+	},
+
+	'keyup [role="search"] input'(e) {
 		if (e.which === 27) {
 			e.preventDefault();
 			e.stopPropagation();
 
 			toolbarSearch.clear();
+			$('.toolbar').css('display', 'none');
 		}
 	},
 
-	'click .toolbar-search__input'() {
+	'click [role="search"] input'() {
 		toolbarSearch.shortcut = false;
 	},
 
-	'click .toolbar-search__create-channel, touchend .toolbar-search__create-channel'(e) {
+	'click .toolbar__icon-search--right'() {
+		toolbarSearch.clear();
+		$('.toolbar').css('display', 'none');
+	},
+
+	'blur [role="search"] input'() {
+		toolbarSearch.clear();
+		$('.toolbar').css('display', 'none');
+	},
+
+	'click [role="search"] button, touchend [role="search"] button'(e) {
 		if (RocketChat.authz.hasAtLeastOnePermission(['create-c', 'create-p'])) {
-			SideNav.setFlex('createCombinedFlex');
-			SideNav.openFlex();
+			// TODO: resolve this name menu/sidebar/sidebav/flex...
+			menu.close();
+			FlowRouter.go('create-channel');
 		} else {
 			e.preventDefault();
-		}
-	}
-});
-
-Template.toolbarSearchList.helpers({
-	icon() {
-		return RocketChat.roomTypes.getIcon(this.t);
-	},
-	userStatus() {
-		if (this.t === 'd') {
-			return 'status-' + (Session.get(`user_${this.name}_status`) || 'offline');
-		} else {
-			return 'status-' + (RocketChat.roomTypes.getUserStatus(this.t, this.rid || this._id) || 'offline');
 		}
 	}
 });

@@ -18,13 +18,14 @@ Meteor.methods({
 		};
 
 		// add subscription
-		var subscriptionData = {
+		const subscriptionData = {
 			rid: inquiry.rid,
 			name: inquiry.name,
 			alert: true,
 			open: true,
 			unread: 1,
-			code: inquiry.code,
+			userMentions: 1,
+			groupMentions: 0,
 			u: {
 				_id: agent.agentId,
 				username: agent.username
@@ -60,6 +61,6 @@ Meteor.methods({
 		});
 
 		// return room corresponding to inquiry (for redirecting agent to the room route)
-		return room;
+		return inquiry;
 	}
 });

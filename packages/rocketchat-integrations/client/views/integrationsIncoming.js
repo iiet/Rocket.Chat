@@ -26,8 +26,8 @@ Template.integrationsIncoming.helpers({
 			}
 
 			if (data) {
-				const completeToken = `${data._id}/${data.token}`;
-				data.url = Meteor.absoluteUrl(`hooks/${completeToken}`);
+				const completeToken = `${ data._id }/${ data.token }`;
+				data.url = Meteor.absoluteUrl(`hooks/${ completeToken }`);
 				data.completeToken = completeToken;
 				Template.instance().record.set(data);
 				return data;
@@ -118,7 +118,7 @@ Template.integrationsIncoming.helpers({
 			}
 		});
 
-		return `curl -X POST -H 'Content-Type: application/json' --data 'payload=${JSON.stringify(data)}' ${record.url}`;
+		return `curl -X POST -H 'Content-Type: application/json' --data '${ JSON.stringify(data) }' ${ record.url }`;
 	},
 
 	editorOptions() {
@@ -159,7 +159,7 @@ Template.integrationsIncoming.events({
 	'click .submit > .delete': () => {
 		const params = Template.instance().data.params();
 
-		swal({
+		modal.open({
 			title: t('Are_you_sure'),
 			text: t('You_will_not_be_able_to_recover'),
 			type: 'warning',
@@ -172,9 +172,9 @@ Template.integrationsIncoming.events({
 		}, () => {
 			Meteor.call('deleteIncomingIntegration', params.id, (err) => {
 				if (err) {
-					handleError(err);
+					return handleError(err);
 				} else {
-					swal({
+					modal.open({
 						title: t('Deleted'),
 						text: t('Your_entry_has_been_deleted'),
 						type: 'success',
@@ -221,7 +221,8 @@ Template.integrationsIncoming.events({
 
 		const integration = {
 			enabled: enabled === '1',
-			channel: channel,
+			channel,
+			username,
 			alias: alias !== '' ? alias : undefined,
 			emoji: emoji !== '' ? emoji : undefined,
 			avatar: avatar !== '' ? avatar : undefined,
@@ -240,8 +241,6 @@ Template.integrationsIncoming.events({
 				toastr.success(TAPi18n.__('Integration_updated'));
 			});
 		} else {
-			integration.username = username;
-
 			Meteor.call('addIncomingIntegration', integration, (err, data) => {
 				if (err) {
 					return handleError(err);

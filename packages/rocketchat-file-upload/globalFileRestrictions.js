@@ -3,7 +3,7 @@
 import filesize from 'filesize';
 
 const slingShotConfig = {
-	authorize: function(file/*, metaContext*/) {
+	authorize(file/*, metaContext*/) {
 		//Deny uploads if user is not logged in.
 		if (!this.userId) {
 			throw new Meteor.Error('login-required', 'Please login before posting files');
@@ -15,7 +15,7 @@ const slingShotConfig = {
 
 		const maxFileSize = RocketChat.settings.get('FileUpload_MaxFileSize');
 
-		if (maxFileSize && maxFileSize < file.size) {
+		if (maxFileSize >= -1 && maxFileSize < file.size) {
 			throw new Meteor.Error(TAPi18n.__('File_exceeds_allowed_size_of_bytes', { size: filesize(maxFileSize) }));
 		}
 

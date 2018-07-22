@@ -15,11 +15,10 @@ Package.onUse(function(api) {
 		'mongo',
 		'ecmascript',
 		'templating',
-		'coffeescript',
-		'underscore',
 		'tracker',
 		'rocketchat:lib',
-		'rocketchat:ui-account'
+		'rocketchat:ui-account',
+		'rocketchat:ui-vrecord'
 	]);
 
 	api.addFiles('client/message.html', 'client');
@@ -30,16 +29,20 @@ Package.onUse(function(api) {
 	api.addFiles('client/popup/messagePopupConfig.html', 'client');
 	api.addFiles('client/popup/messagePopupEmoji.html', 'client');
 	api.addFiles('client/popup/messagePopupSlashCommand.html', 'client');
+	api.addFiles('client/popup/messagePopupSlashCommandPreview.html', 'client');
+	api.addFiles('client/popup/messagePopupSlashCommandPreview.js', 'client');
 	api.addFiles('client/popup/messagePopupUser.html', 'client');
 
-	api.addFiles('client/message.coffee', 'client');
-	api.addFiles('client/messageBox.coffee', 'client');
-	api.addFiles('client/popup/messagePopup.coffee', 'client');
+	api.addFiles('client/message.js', 'client');
+	api.addFiles('client/messageBox.js', 'client');
+	api.addFiles('client/popup/messagePopup.js', 'client');
 	api.addFiles('client/popup/messagePopupChannel.js', 'client');
-	api.addFiles('client/popup/messagePopupConfig.coffee', 'client');
-	api.addFiles('client/popup/messagePopupEmoji.coffee', 'client');
+	api.addFiles('client/popup/messagePopupConfig.js', 'client');
+	api.addFiles('client/popup/messagePopupEmoji.js', 'client');
 
 	api.addFiles('client/renderMessageBody.js', 'client');
+
+	api.addFiles('startup/messageBoxActions.js', 'client');
 
 	api.export('renderMessageBody');
 });

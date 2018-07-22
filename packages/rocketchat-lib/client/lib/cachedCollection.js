@@ -1,4 +1,5 @@
 import localforage from 'localforage';
+import _ from 'underscore';
 
 class CachedCollectionManager {
 	constructor() {
@@ -14,18 +15,22 @@ class CachedCollectionManager {
 			this.clearAllCacheOnLogout();
 		};
 
-		let connectionWasOnline = true;
-		Tracker.autorun(() => {
-			const connected = Meteor.connection.status().connected;
+		// Wait 1s to start or the code will run before the connection and
+		// on first connection the `reconnect` callbacks will run
+		Meteor.setTimeout(() => {
+			let connectionWasOnline = true;
+			Tracker.autorun(() => {
+				const connected = Meteor.connection.status().connected;
 
-			if (connected === true && connectionWasOnline === false) {
-				for (const cb of this.reconnectCb) {
-					cb();
+				if (connected === true && connectionWasOnline === false) {
+					for (const cb of this.reconnectCb) {
+						cb();
+					}
 				}
-			}
 
-			connectionWasOnline = connected;
-		});
+				connectionWasOnline = connected;
+			});
+		}, 1000);
 
 		Tracker.autorun(() => {
 			if (Meteor.userId() !== null) {
@@ -85,6 +90,13 @@ class CachedCollectionManager {
 
 RocketChat.CachedCollectionManager = new CachedCollectionManager;
 
+const debug = false;
+
+const nullLog = function() {};
+
+const log = function(...args) {
+	console.log(`CachedCollection ${ this.name } =>`, ...args);
+};
 
 class CachedCollection {
 	constructor({
@@ -95,28 +107,31 @@ class CachedCollection {
 		eventName,
 		eventType = 'onUser',
 		userRelated = true,
+		listenChangesForLoggedUsersOnly = false,
 		useSync = true,
 		useCache = true,
-		debug = true,
-		version = 6,
-		maxCacheTime = 60*60*24*30
+		version = 7,
+		maxCacheTime = 60*60*24*30,
+		onSyncData = (/* action, record */) => {}
 	}) {
-		this.collection = collection || new Meteor.Collection(null);
+		this.collection = collection || new Mongo.Collection(null);
 
 		this.ready = new ReactiveVar(false);
 		this.name = name;
-		this.methodName = methodName || `${name}/get`;
-		this.syncMethodName = syncMethodName || `${name}/get`;
-		this.eventName = eventName || `${name}-changed`;
+		this.methodName = methodName || `${ name }/get`;
+		this.syncMethodName = syncMethodName || `${ name }/get`;
+		this.eventName = eventName || `${ name }-changed`;
 		this.eventType = eventType;
 		this.useSync = useSync;
 		this.useCache = useCache;
+		this.listenChangesForLoggedUsersOnly = listenChangesForLoggedUsersOnly;
 		this.debug = debug;
 		this.version = version;
 		this.userRelated = userRelated;
 		this.updatedAt = new Date(0);
 		this.maxCacheTime = maxCacheTime;
-
+		this.onSyncData = onSyncData;
+		this.log = debug ? log : nullLog;
 		RocketChat.CachedCollectionManager.register(this);
 
 		if (userRelated === true) {
@@ -134,18 +149,12 @@ class CachedCollection {
 		}
 	}
 
-	log(...args) {
-		if (this.debug === true) {
-			console.log(`CachedCollection ${this.name} =>`, ...args);
-		}
-	}
-
 	countQueries() {
-		this.log(`${Object.keys(this.collection._collection.queries).length} queries`);
+		this.log(`${ Object.keys(this.collection._collection.queries).length } queries`);
 	}
 
 	recomputeCollectionQueries() {
-		this.log(`recomputing ${Object.keys(this.collection._collection.queries).length} queries`);
+		this.log(`recomputing ${ Object.keys(this.collection._collection.queries).length } queries`);
 		_.each(this.collection._collection.queries, (query) => {
 			this.collection._collection._recomputeResults(query);
 		});
@@ -165,7 +174,7 @@ class CachedCollection {
 		}
 
 		localforage.getItem(this.name, (error, data) => {
-			if (data && (data.version < this.version || data.token !== this.getToken())) {
+			if (data && (data.version < this.version || data.token !== this.getToken() || this.getToken() === undefined)) {
 				this.clearCache();
 				callback(false);
 				return;
@@ -179,8 +188,9 @@ class CachedCollection {
 			}
 
 			if (data && data.records && data.records.length > 0) {
-				this.log(`${data.records.length} records loaded from cache`);
+				this.log(`${ data.records.length } records loaded from cache`);
 				data.records.forEach((record) => {
+					RocketChat.callbacks.run(`cachedCollection-loadFromCache-${ this.name }`, record);
 					record.__cache__ = true;
 					this.collection.upsert({ _id: record._id }, _.omit(record, '_id'));
 
@@ -201,10 +211,13 @@ class CachedCollection {
 
 	loadFromServer(callback = () => {}) {
 		Meteor.call(this.methodName, (error, data) => {
-			this.log(`${data.length} records loaded from server`);
+			this.log(`${ data.length } records loaded from server`);
 			data.forEach((record) => {
 				delete record.$loki;
+				RocketChat.callbacks.run(`cachedCollection-loadFromServer-${ this.name }`, record, 'changed');
 				this.collection.upsert({ _id: record._id }, _.omit(record, '_id'));
+
+				this.onSyncData('changed', record);
 
 				if (record._updatedAt && record._updatedAt > this.updatedAt) {
 					this.updatedAt = record._updatedAt;
@@ -232,18 +245,18 @@ class CachedCollection {
 			return false;
 		}
 
-		this.log(`syncing from ${this.updatedAt}`);
+		this.log(`syncing from ${ this.updatedAt }`);
 
 		Meteor.call(this.syncMethodName, this.updatedAt, (error, data) => {
 			let changes = [];
 
 			if (data.update && data.update.length > 0) {
-				this.log(`${data.update.length} records updated in sync`);
+				this.log(`${ data.update.length } records updated in sync`);
 				changes.push(...data.update);
 			}
 
 			if (data.remove && data.remove.length > 0) {
-				this.log(`${data.remove.length} records removed in sync`);
+				this.log(`${ data.remove.length } records removed in sync`);
 				changes.push(...data.remove);
 			}
 
@@ -264,15 +277,19 @@ class CachedCollection {
 
 			for (const record of changes) {
 				delete record.$loki;
-
+				RocketChat.callbacks.run(`cachedCollection-sync-${ this.name }`, record, record._deletedAt? 'removed' : 'changed');
 				if (record._deletedAt) {
 					this.collection.remove({ _id: record._id });
+
+					this.onSyncData('removed', record);
 
 					if (record._deletedAt && record._deletedAt > this.updatedAt) {
 						this.updatedAt = record._deletedAt;
 					}
 				} else {
 					this.collection.upsert({ _id: record._id }, _.omit(record, '_id'));
+
+					this.onSyncData('changed', record);
 
 					if (record._updatedAt && record._updatedAt > this.updatedAt) {
 						this.updatedAt = record._updatedAt;
@@ -320,8 +337,10 @@ class CachedCollection {
 	setupListener(eventType, eventName) {
 		RocketChat.Notifications[eventType || this.eventType](eventName || this.eventName, (t, record) => {
 			this.log('record received', t, record);
+			RocketChat.callbacks.run(`cachedCollection-received-${ this.name }`, record, t);
 			if (t === 'removed') {
 				this.collection.remove(record._id);
+				RoomManager.close(record.t+record.name);
 			} else {
 				delete record.$loki;
 				this.collection.upsert({ _id: record._id }, _.omit(record, '_id'));
@@ -362,7 +381,13 @@ class CachedCollection {
 				});
 			}
 
-			this.setupListener();
+			if (this.listenChangesForLoggedUsersOnly) {
+				RocketChat.CachedCollectionManager.onLogin(() => {
+					this.setupListener();
+				});
+			} else {
+				this.setupListener();
+			}
 		});
 	}
 }
