@@ -1,7 +1,13 @@
-/* global InstanceStatus, DDP, LoggerManager */
-
+import { Meteor } from 'meteor/meteor';
+import { InstanceStatus } from 'meteor/konecty:multiple-instances-status';
+import { check } from 'meteor/check';
 import _ from 'underscore';
-import {DDPCommon} from 'meteor/ddp-common';
+import { DDP } from 'meteor/ddp';
+import { DDPCommon } from 'meteor/ddp-common';
+import { Logger, LoggerManager } from '../../app/logger';
+import { hasPermission } from '../../app/authorization';
+import { settings } from '../../app/settings';
+import { isDocker, getURL } from '../../app/utils';
 
 process.env.PORT = String(process.env.PORT).trim();
 process.env.INSTANCE_IP = String(process.env.INSTANCE_IP).trim();
@@ -13,8 +19,8 @@ const logger = new Logger('StreamBroadcast', {
 	sections: {
 		connection: 'Connection',
 		auth: 'Auth',
-		stream: 'Stream'
-	}
+		stream: 'Stream',
+	},
 });
 
 function _authorizeConnection(instance) {
@@ -32,7 +38,7 @@ function _authorizeConnection(instance) {
 
 function authorizeConnection(instance) {
 	const query = {
-		_id: InstanceStatus.id()
+		_id: InstanceStatus.id(),
 	};
 
 	if (!InstanceStatus.getCollection().findOne(query)) {
@@ -47,27 +53,28 @@ function authorizeConnection(instance) {
 function startMatrixBroadcast() {
 	const query = {
 		'extraInformation.port': {
-			$exists: true
-		}
+			$exists: true,
+		},
 	};
 
 	const options = {
 		sort: {
-			_createdAt: -1
-		}
+			_createdAt: -1,
+		},
 	};
 
 	return InstanceStatus.getCollection().find(query, options).observe({
 		added(record) {
-			let instance = `${ record.extraInformation.host }:${ record.extraInformation.port }`;
+			const subPath = getURL('', { cdn: false, full: false });
+			let instance = `${ record.extraInformation.host }:${ record.extraInformation.port }${ subPath }`;
 
 			if (record.extraInformation.port === process.env.PORT && record.extraInformation.host === process.env.INSTANCE_IP) {
 				logger.auth.info('prevent self connect', instance);
 				return;
 			}
 
-			if (record.extraInformation.host === process.env.INSTANCE_IP && RocketChat.isDocker() === false) {
-				instance = `localhost:${ record.extraInformation.port }`;
+			if (record.extraInformation.host === process.env.INSTANCE_IP && isDocker() === false) {
+				instance = `localhost:${ record.extraInformation.port }${ subPath }`;
 			}
 
 			if (connections[instance] && connections[instance].instanceRecord) {
@@ -82,7 +89,7 @@ function startMatrixBroadcast() {
 			logger.connection.info('connecting in', instance);
 
 			connections[instance] = DDP.connect(instance, {
-				_dontPrintErrors: LoggerManager.logLevel < 2
+				_dontPrintErrors: LoggerManager.logLevel < 2,
 			});
 
 			connections[instance].instanceRecord = record;
@@ -94,15 +101,16 @@ function startMatrixBroadcast() {
 		},
 
 		removed(record) {
-			let instance = `${ record.extraInformation.host }:${ record.extraInformation.port }`;
+			const subPath = getURL('', { cdn: false, full: false });
+			let instance = `${ record.extraInformation.host }:${ record.extraInformation.port }${ subPath }`;
 
-			if (record.extraInformation.host === process.env.INSTANCE_IP && RocketChat.isDocker() === false) {
-				instance = `localhost:${ record.extraInformation.port }`;
+			if (record.extraInformation.host === process.env.INSTANCE_IP && isDocker() === false) {
+				instance = `localhost:${ record.extraInformation.port }${ subPath }`;
 			}
 
 			const query = {
 				'extraInformation.host': record.extraInformation.host,
-				'extraInformation.port': record.extraInformation.port
+				'extraInformation.port': record.extraInformation.port,
 			};
 
 			if (connections[instance] && !InstanceStatus.getCollection().findOne(query)) {
@@ -110,7 +118,7 @@ function startMatrixBroadcast() {
 				connections[instance].disconnect();
 				return delete connections[instance];
 			}
-		}
+		},
 	});
 }
 
@@ -122,7 +130,7 @@ Meteor.methods({
 		this.unblock();
 
 		const query = {
-			_id: remoteId
+			_id: remoteId,
 		};
 
 		if (selfId === InstanceStatus.id() && remoteId !== InstanceStatus.id() && (InstanceStatus.getCollection().findOne(query))) {
@@ -152,7 +160,7 @@ Meteor.methods({
 		} else {
 			Meteor.StreamerCentral.instances[streamName]._emit(eventName, args);
 		}
-	}
+	},
 });
 
 function startStreamCastBroadcast(value) {
@@ -161,7 +169,7 @@ function startStreamCastBroadcast(value) {
 	logger.connection.info('connecting in', instance, value);
 
 	const connection = DDP.connect(value, {
-		_dontPrintErrors: LoggerManager.logLevel < 2
+		_dontPrintErrors: LoggerManager.logLevel < 2,
 	});
 
 	connections[instance] = connection;
@@ -176,7 +184,7 @@ function startStreamCastBroadcast(value) {
 			return;
 		}
 
-		const {streamName, eventName, args} = msg.fields;
+		const { streamName, eventName, args } = msg.fields;
 
 		if (!streamName || !eventName || !args) {
 			return;
@@ -203,7 +211,7 @@ function startStreamBroadcast() {
 
 	logger.info('startStreamBroadcast');
 
-	RocketChat.settings.get('Stream_Cast_Address', function(key, value) {
+	settings.get('Stream_Cast_Address', function(key, value) {
 		// var connection, fn, instance;
 		const fn = function(instance, connection) {
 			connection.disconnect();
@@ -222,7 +230,7 @@ function startStreamBroadcast() {
 		}
 	});
 
-	function broadcast(streamName, eventName, args/*, userId*/) {
+	function broadcast(streamName, eventName, args/* , userId*/) {
 		const fromInstance = `${ process.env.INSTANCE_IP }:${ process.env.PORT }`;
 		const results = [];
 
@@ -270,15 +278,15 @@ Meteor.startup(function() {
 
 Meteor.methods({
 	'instances/get'() {
-		if (!RocketChat.authz.hasPermission(Meteor.userId(), 'view-statistics')) {
+		if (!hasPermission(Meteor.userId(), 'view-statistics')) {
 			throw new Meteor.Error('error-action-not-allowed', 'List instances is not allowed', {
-				method: 'instances/get'
+				method: 'instances/get',
 			});
 		}
 
-		return Object.keys(connections).map(address => {
+		return Object.keys(connections).map((address) => {
 			const conn = connections[address];
 			return Object.assign({ address, currentStatus: conn._stream.currentStatus }, _.pick(conn, 'instanceRecord', 'broadcastAuth'));
 		});
-	}
+	},
 });
