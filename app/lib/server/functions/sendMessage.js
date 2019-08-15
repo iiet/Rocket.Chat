@@ -1,5 +1,6 @@
 import { Meteor } from 'meteor/meteor';
 import { Match, check } from 'meteor/check';
+
 import { settings } from '../../../settings';
 import { callbacks } from '../../../callbacks';
 import { Messages } from '../../../models';
@@ -44,13 +45,12 @@ const validateAttachmentsFields = (attachmentField) => {
 	check(attachmentField, objectMaybeIncluding({
 		short: Boolean,
 		title: String,
-		value: Match.OneOf(String, Match.Integer, Boolean),
+		value: Match.OneOf(String, Number, Boolean),
 	}));
 
 	if (typeof attachmentField.value !== 'undefined') {
 		attachmentField.value = String(attachmentField.value);
 	}
-
 };
 
 const validateAttachmentsActions = (attachmentActions) => {
@@ -198,6 +198,10 @@ export const sendMessage = function(user, message, room, upsert = false) {
 			}, message);
 			message._id = _id;
 		} else {
+			const messageAlreadyExists = message._id && Messages.findOneById(message._id, { fields: { _id: 1 } });
+			if (messageAlreadyExists) {
+				return;
+			}
 			message._id = Messages.insert(message);
 		}
 

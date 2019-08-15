@@ -1,8 +1,6 @@
 import sideNav from '../../pageobjects/side-nav.page';
 import flexTab from '../../pageobjects/flex-tab.page';
 import admin from '../../pageobjects/administration.page';
-
-// test data imports
 import { checkIfUserIsAdmin } from '../../data/checks';
 import { adminUsername, adminEmail, adminPassword } from '../../data/user.js';
 
@@ -34,7 +32,7 @@ describe('[Administration]', () => {
 			before(() => {
 				admin.infoLink.waitForVisible(5000);
 				admin.infoLink.click();
-				admin.infoRocketChatTable.waitForVisible(5000);
+				admin.infoRocketChatTable.waitForVisible(10000);
 			});
 			it('the first title should be Rocket.Chat', () => {
 				admin.infoRocketChatTableTitle.getText().should.equal('Rocket.Chat');
