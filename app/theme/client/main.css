@@ -1,6 +1,6 @@
 /* General */
-@import 'imports/general/reset.css';
 @import 'imports/general/variables.css';
+@import 'imports/general/reset.css';
 @import 'imports/general/base_old.css';
 @import 'imports/general/base.css';
 @import 'imports/general/animations.css';
@@ -29,7 +29,6 @@
 @import 'imports/components/sidebar/rooms-list.css';
 
 /* Main */
-@import 'imports/components/setup-wizard.css';
 @import 'imports/components/flex-nav.css';
 @import 'imports/components/header.css';
 @import 'imports/components/memberlist.css';
@@ -41,7 +40,6 @@
 @import 'imports/components/alerts.css';
 @import 'imports/components/popout.css';
 @import 'imports/components/modal.css';
-@import 'imports/components/tooltip.css';
 @import 'imports/components/slider.css';
 @import 'imports/components/chip.css';
 @import 'imports/components/messages.css';
@@ -59,3 +57,6 @@
 
 /* RTL */
 @import 'imports/general/rtl.css';
+
+/* Legacy theming */
+@import 'imports/general/theme_old.css';

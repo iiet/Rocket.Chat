@@ -1,18 +1,19 @@
 import { Meteor } from 'meteor/meteor';
 
-import { Settings } from '../../../app/models';
-import { hasPermission } from '../../../app/authorization';
+import { Settings } from '../../../app/models/server';
+import { hasPermission, hasAtLeastOnePermission } from '../../../app/authorization/server';
+import { getSettingPermissionId } from '../../../app/authorization/lib';
+import { SettingsEvents } from '../../../app/settings/server/functions/settings';
 import './emitter';
 
 Meteor.methods({
 	'public-settings/get'(updatedAt) {
-		const records = Settings.findNotHiddenPublic().fetch();
-
 		if (updatedAt instanceof Date) {
+			const records = Settings.findNotHiddenPublicUpdatedAfter(updatedAt).fetch();
+			SettingsEvents.emit('fetch-settings', records);
+
 			return {
-				update: records.filter(function(record) {
-					return record._updatedAt > updatedAt;
-				}),
+				update: records,
 				remove: Settings.trashFindDeletedAfter(updatedAt, {
 					hidden: {
 						$ne: true,
@@ -26,23 +27,43 @@ Meteor.methods({
 				}).fetch(),
 			};
 		}
-		return records;
+
+		const publicSettings = Settings.findNotHiddenPublic().fetch();
+		SettingsEvents.emit('fetch-settings', publicSettings);
+
+		return publicSettings;
 	},
 	'private-settings/get'(updatedAfter) {
-		if (!Meteor.userId()) {
+		const uid = Meteor.userId();
+
+		if (!uid) {
 			return [];
 		}
-		if (!hasPermission(Meteor.userId(), 'view-privileged-setting')) {
+
+		const privilegedSetting = hasAtLeastOnePermission(uid, ['view-privileged-setting', 'edit-privileged-setting']);
+		const manageSelectedSettings = privilegedSetting || hasPermission(uid, 'manage-selected-settings');
+
+		if (!manageSelectedSettings) {
 			return [];
 		}
+
+		const bypass = (settings) => settings;
+
+		const applyFilter = (fn, args) => fn(args);
+
+		const getAuthorizedSettingsFiltered = (settings) => settings.filter((record) => hasPermission(uid, getSettingPermissionId(record._id)));
+
+		const getAuthorizedSettings = (updatedAfter, privilegedSetting) => applyFilter(privilegedSetting ? bypass : getAuthorizedSettingsFiltered, Settings.findNotHidden(updatedAfter && { updatedAfter }).fetch());
 
 		if (!(updatedAfter instanceof Date)) {
-			return Settings.findNotHidden().fetch();
+			// this does not only imply an unfiltered setting range, it also identifies the caller's context:
+			// If called *with* filter (see below), the user wants a collection as a result.
+			// in this case, it shall only be a plain array
+			return getAuthorizedSettings(updatedAfter, privilegedSetting);
 		}
 
-		const records = Settings.findNotHidden({ updatedAfter }).fetch();
 		return {
-			update: records,
+			update: getAuthorizedSettings(updatedAfter, privilegedSetting),
 			remove: Settings.trashFindDeletedAfter(updatedAfter, {
 				hidden: {
 					$ne: true,

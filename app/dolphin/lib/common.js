@@ -5,7 +5,6 @@ import { ServiceConfiguration } from 'meteor/service-configuration';
 import { settings } from '../../settings';
 import { CustomOAuth } from '../../custom-oauth';
 import { callbacks } from '../../callbacks';
-import { Settings } from '../../models';
 
 const config = {
 	serverURL: '',
@@ -31,16 +30,10 @@ function DolphinOnCreateUser(options, user) {
 
 if (Meteor.isServer) {
 	Meteor.startup(() =>
-		Settings.find({ _id: 'Accounts_OAuth_Dolphin_URL' }).observe({
-			added() {
-				config.serverURL = settings.get('Accounts_OAuth_Dolphin_URL');
-				return Dolphin.configure(config);
-			},
-			changed() {
-				config.serverURL = settings.get('Accounts_OAuth_Dolphin_URL');
-				return Dolphin.configure(config);
-			},
-		})
+		settings.get('Accounts_OAuth_Dolphin_URL', (key, value) => {
+			config.serverURL = value;
+			return Dolphin.configure(config);
+		}),
 	);
 
 	if (settings.get('Accounts_OAuth_Dolphin_URL')) {
@@ -65,6 +58,6 @@ if (Meteor.isServer) {
 				config.serverURL = settings.get('Accounts_OAuth_Dolphin_URL');
 				return Dolphin.configure(config);
 			}
-		})
+		}),
 	);
 }

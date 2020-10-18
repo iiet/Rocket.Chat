@@ -22,19 +22,26 @@ integrations.triggerHandler = new class RocketChatIntegrationHandler {
 		this.compiledScripts = {};
 		this.triggers = {};
 
-		Models.Integrations.find({ type: 'webhook-outgoing' }).observe({
-			added: (record) => {
-				this.addIntegration(record);
-			},
+		Models.Integrations.find({ type: 'webhook-outgoing' }).fetch().forEach((data) => this.addIntegration(data));
 
-			changed: (record) => {
-				this.removeIntegration(record);
-				this.addIntegration(record);
-			},
-
-			removed: (record) => {
-				this.removeIntegration(record);
-			},
+		Models.Integrations.on('change', ({ clientAction, id, data }) => {
+			switch (clientAction) {
+				case 'inserted':
+					if (data.type === 'webhook-outgoing') {
+						this.addIntegration(data);
+					}
+					break;
+				case 'updated':
+					data = data ?? Models.Integrations.findOneById(id);
+					if (data.type === 'webhook-outgoing') {
+						this.removeIntegration(data);
+						this.addIntegration(data);
+					}
+					break;
+				case 'removed':
+					this.removeIntegration({ _id: id });
+					break;
+			}
 		});
 	}
 
@@ -205,7 +212,7 @@ integrations.triggerHandler = new class RocketChatIntegrationHandler {
 			message.channel = `#${ tmpRoom._id }`;
 		}
 
-		message = processWebhookMessage(message, user, defaultValues);
+		message = processWebhookMessage(message, user, defaultValues, trigger);
 		return message;
 	}
 
@@ -414,6 +421,7 @@ integrations.triggerHandler = new class RocketChatIntegrationHandler {
 				data.user_id = message.u._id;
 				data.user_name = message.u.username;
 				data.text = message.msg;
+				data.siteUrl = settings.get('Site_Url');
 
 				if (message.alias) {
 					data.alias = message.alias;
@@ -490,6 +498,73 @@ integrations.triggerHandler = new class RocketChatIntegrationHandler {
 		}
 	}
 
+	getTriggersToExecute(room, message) {
+		const triggersToExecute = new Set();
+		if (room) {
+			switch (room.t) {
+				case 'd':
+					if (this.triggers.all_direct_messages) {
+						for (const trigger of Object.values(this.triggers.all_direct_messages)) {
+							triggersToExecute.add(trigger);
+						}
+					}
+
+					room.uids.filter((uid) => this.triggers[`@${ uid }`]).forEach((uid) => {
+						for (const trigger of Object.values(this.triggers[`@${ uid }`])) {
+							triggersToExecute.add(trigger);
+						}
+					});
+
+					room.usernames.filter((username) => username !== message.u.username && this.triggers[`@${ username }`]).forEach((username) => {
+						for (const trigger of Object.values(this.triggers[`@${ username }`])) {
+							triggersToExecute.add(trigger);
+						}
+					});
+					break;
+				case 'c':
+					if (this.triggers.all_public_channels) {
+						for (const trigger of Object.values(this.triggers.all_public_channels)) {
+							triggersToExecute.add(trigger);
+						}
+					}
+
+					if (this.triggers[`#${ room._id }`]) {
+						for (const trigger of Object.values(this.triggers[`#${ room._id }`])) {
+							triggersToExecute.add(trigger);
+						}
+					}
+
+					if (room._id !== room.name && this.triggers[`#${ room.name }`]) {
+						for (const trigger of Object.values(this.triggers[`#${ room.name }`])) {
+							triggersToExecute.add(trigger);
+						}
+					}
+					break;
+
+				default:
+					if (this.triggers.all_private_groups) {
+						for (const trigger of Object.values(this.triggers.all_private_groups)) {
+							triggersToExecute.add(trigger);
+						}
+					}
+
+					if (this.triggers[`#${ room._id }`]) {
+						for (const trigger of Object.values(this.triggers[`#${ room._id }`])) {
+							triggersToExecute.add(trigger);
+						}
+					}
+
+					if (room._id !== room.name && this.triggers[`#${ room.name }`]) {
+						for (const trigger of Object.values(this.triggers[`#${ room.name }`])) {
+							triggersToExecute.add(trigger);
+						}
+					}
+					break;
+			}
+		}
+		return [...triggersToExecute];
+	}
+
 	executeTriggers(...args) {
 		logger.outgoing.debug('Execute Trigger:', args[0]);
 
@@ -503,75 +578,9 @@ integrations.triggerHandler = new class RocketChatIntegrationHandler {
 			return;
 		}
 
-		const triggersToExecute = [];
-
 		logger.outgoing.debug('Starting search for triggers for the room:', room ? room._id : '__any');
-		if (room) {
-			switch (room.t) {
-				case 'd':
-					const id = room._id.replace(message.u._id, '');
-					const username = _.without(room.usernames, message.u.username)[0];
 
-					if (this.triggers[`@${ id }`]) {
-						for (const trigger of Object.values(this.triggers[`@${ id }`])) {
-							triggersToExecute.push(trigger);
-						}
-					}
-
-					if (this.triggers.all_direct_messages) {
-						for (const trigger of Object.values(this.triggers.all_direct_messages)) {
-							triggersToExecute.push(trigger);
-						}
-					}
-
-					if (id !== username && this.triggers[`@${ username }`]) {
-						for (const trigger of Object.values(this.triggers[`@${ username }`])) {
-							triggersToExecute.push(trigger);
-						}
-					}
-					break;
-
-				case 'c':
-					if (this.triggers.all_public_channels) {
-						for (const trigger of Object.values(this.triggers.all_public_channels)) {
-							triggersToExecute.push(trigger);
-						}
-					}
-
-					if (this.triggers[`#${ room._id }`]) {
-						for (const trigger of Object.values(this.triggers[`#${ room._id }`])) {
-							triggersToExecute.push(trigger);
-						}
-					}
-
-					if (room._id !== room.name && this.triggers[`#${ room.name }`]) {
-						for (const trigger of Object.values(this.triggers[`#${ room.name }`])) {
-							triggersToExecute.push(trigger);
-						}
-					}
-					break;
-
-				default:
-					if (this.triggers.all_private_groups) {
-						for (const trigger of Object.values(this.triggers.all_private_groups)) {
-							triggersToExecute.push(trigger);
-						}
-					}
-
-					if (this.triggers[`#${ room._id }`]) {
-						for (const trigger of Object.values(this.triggers[`#${ room._id }`])) {
-							triggersToExecute.push(trigger);
-						}
-					}
-
-					if (room._id !== room.name && this.triggers[`#${ room.name }`]) {
-						for (const trigger of Object.values(this.triggers[`#${ room.name }`])) {
-							triggersToExecute.push(trigger);
-						}
-					}
-					break;
-			}
-		}
+		const triggersToExecute = this.getTriggersToExecute(room, message);
 
 		if (this.triggers.__any) {
 			// For outgoing integration which don't rely on rooms.

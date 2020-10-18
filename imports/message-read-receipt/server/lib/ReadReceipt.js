@@ -19,6 +19,10 @@ const debounceByRoomId = function(fn) {
 const updateMessages = debounceByRoomId(Meteor.bindEnvironment(({ _id, lm }) => {
 	// @TODO maybe store firstSubscription in room object so we don't need to call the above update method
 	const firstSubscription = Subscriptions.getMinimumLastSeenByRoomId(_id);
+	if (!firstSubscription) {
+		return;
+	}
+
 	Messages.setAsRead(_id, firstSubscription.ls);
 
 	if (lm <= firstSubscription.ls) {
@@ -53,7 +57,7 @@ export const ReadReceipt = {
 
 		// this will usually happens if the message sender is the only one on the room
 		const firstSubscription = Subscriptions.getMinimumLastSeenByRoomId(roomId);
-		if (message.unread && message.ts < firstSubscription.ls) {
+		if (firstSubscription && message.unread && message.ts < firstSubscription.ls) {
 			Messages.setAsReadById(message._id, firstSubscription.ls);
 		}
 
@@ -63,7 +67,7 @@ export const ReadReceipt = {
 		this.storeReadReceipts([{ _id: message._id }], roomId, userId, extraData);
 	},
 
-	storeReadReceipts(messages, roomId, userId, extraData = {}) {
+	async storeReadReceipts(messages, roomId, userId, extraData = {}) {
 		if (settings.get('Message_Read_Receipt_Store_Users')) {
 			const ts = new Date();
 			const receipts = messages.map((message) => ({
@@ -80,7 +84,7 @@ export const ReadReceipt = {
 			}
 
 			try {
-				rawReadReceipts.insertMany(receipts);
+				await rawReadReceipts.insertMany(receipts);
 			} catch (e) {
 				console.error('Error inserting read receipts per user');
 			}

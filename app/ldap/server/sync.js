@@ -5,16 +5,43 @@ import { SyncedCron } from 'meteor/littledata:synced-cron';
 import _ from 'underscore';
 
 import LDAP from './ldap';
+import { callbacks } from '../../callbacks/server';
 import { RocketChatFile } from '../../file';
 import { settings } from '../../settings';
 import { Notifications } from '../../notifications';
-import { Users } from '../../models';
+import { Users, Roles, Rooms, Subscriptions } from '../../models';
 import { Logger } from '../../logger';
 import { _setRealName, _setUsername } from '../../lib';
 import { templateVarHandler } from '../../utils';
 import { FileUpload } from '../../file-upload';
+import { addUserToRoom, removeUserFromRoom, createRoom } from '../../lib/server/functions';
 
-const logger = new Logger('LDAPSync', {});
+
+export const logger = new Logger('LDAPSync', {});
+
+export function isUserInLDAPGroup(ldap, ldapUser, user, ldapGroup) {
+	const syncUserRolesFilter = settings.get('LDAP_Sync_User_Data_Groups_Filter').trim();
+	const syncUserRolesBaseDN = settings.get('LDAP_Sync_User_Data_Groups_BaseDN').trim();
+
+	if (!syncUserRolesFilter || !syncUserRolesBaseDN) {
+		logger.error('Please setup LDAP Group Filter and LDAP Group BaseDN in LDAP Settings.');
+		return false;
+	}
+	const searchOptions = {
+		filter: syncUserRolesFilter.replace(/#{username}/g, user.username).replace(/#{groupName}/g, ldapGroup).replace(/#{userdn}/g, ldapUser.dn),
+		scope: 'sub',
+	};
+
+	const result = ldap.searchAllSync(syncUserRolesBaseDN, searchOptions);
+	if (!Array.isArray(result) || result.length === 0) {
+		logger.debug(`${ user.username } is not in ${ ldapGroup } group!!!`);
+	} else {
+		logger.debug(`${ user.username } is in ${ ldapGroup } group.`);
+		return true;
+	}
+
+	return false;
+}
 
 export function slug(text) {
 	if (settings.get('UTF8_Names_Slugify') !== true) {
@@ -96,12 +123,14 @@ export function getDataToSyncUserData(ldapUser, user) {
 						return;
 					}
 
+					const verified = settings.get('Accounts_Verify_Email_For_External_Accounts');
+
 					if (_.isObject(ldapUser[ldapField])) {
 						_.map(ldapUser[ldapField], function(item) {
-							emailList.push({ address: item, verified: true });
+							emailList.push({ address: item, verified });
 						});
 					} else {
-						emailList.push({ address: ldapUser[ldapField], verified: true });
+						emailList.push({ address: ldapUser[ldapField], verified });
 					}
 					break;
 
@@ -175,20 +204,198 @@ export function getDataToSyncUserData(ldapUser, user) {
 		return userData;
 	}
 }
+export function mapLdapGroupsToUserRoles(ldap, ldapUser, user) {
+	const syncUserRoles = settings.get('LDAP_Sync_User_Data_Groups');
+	const syncUserRolesAutoRemove = settings.get('LDAP_Sync_User_Data_Groups_AutoRemove');
+	const syncUserRolesFieldMap = settings.get('LDAP_Sync_User_Data_GroupsMap').trim();
 
+	if (!syncUserRoles || !syncUserRolesFieldMap) {
+		logger.debug('not syncing user roles');
+		return [];
+	}
 
-export function syncUserData(user, ldapUser) {
+	const roles = Roles.find({}, {
+		fields: {
+			_updatedAt: 0,
+		},
+	}).fetch();
+
+	if (!roles) {
+		return [];
+	}
+
+	let fieldMap;
+
+	try {
+		fieldMap = JSON.parse(syncUserRolesFieldMap);
+	} catch (err) {
+		logger.error(`Unexpected error : ${ err.message }`);
+		return [];
+	}
+	if (!fieldMap) {
+		return [];
+	}
+
+	const userRoles = [];
+
+	for (const ldapField in fieldMap) {
+		if (!fieldMap.hasOwnProperty(ldapField)) {
+			continue;
+		}
+
+		const userField = fieldMap[ldapField];
+
+		const [roleName] = userField.split(/\.(.+)/);
+		if (!_.find(roles, (el) => el._id === roleName)) {
+			logger.debug(`User Role doesn't exist: ${ roleName }`);
+			continue;
+		}
+
+		logger.debug(`User role exists for mapping ${ ldapField } -> ${ roleName }`);
+
+		if (isUserInLDAPGroup(ldap, ldapUser, user, ldapField)) {
+			userRoles.push(roleName);
+			continue;
+		}
+
+		if (!syncUserRolesAutoRemove) {
+			continue;
+		}
+
+		const del = Roles.removeUserRoles(user._id, roleName);
+		if (settings.get('UI_DisplayRoles') && del) {
+			Notifications.notifyLogged('roles-change', {
+				type: 'removed',
+				_id: roleName,
+				u: {
+					_id: user._id,
+					username: user.username,
+				},
+			});
+		}
+	}
+
+	return userRoles;
+}
+export function createRoomForSync(channel) {
+	logger.info(`Channel '${ channel }' doesn't exist, creating it.`);
+
+	const room = createRoom('c', channel, settings.get('LDAP_Sync_User_Data_Groups_AutoChannels_Admin'), [], false, { customFields: { ldap: true } });
+	if (!room || !room.rid) {
+		logger.error(`Unable to auto-create channel '${ channel }' during ldap sync.`);
+		return;
+	}
+	room._id = room.rid;
+	return room;
+}
+
+export function mapLDAPGroupsToChannels(ldap, ldapUser, user) {
+	const syncUserRoles = settings.get('LDAP_Sync_User_Data_Groups');
+	const syncUserRolesAutoChannels = settings.get('LDAP_Sync_User_Data_Groups_AutoChannels');
+	const syncUserRolesEnforceAutoChannels = settings.get('LDAP_Sync_User_Data_Groups_Enforce_AutoChannels');
+	const syncUserRolesChannelFieldMap = settings.get('LDAP_Sync_User_Data_Groups_AutoChannelsMap').trim();
+
+	const userChannels = [];
+	if (!syncUserRoles || !syncUserRolesAutoChannels || !syncUserRolesChannelFieldMap) {
+		logger.debug('not syncing groups to channels');
+		return [];
+	}
+
+	let fieldMap;
+	try {
+		fieldMap = JSON.parse(syncUserRolesChannelFieldMap);
+	} catch (err) {
+		logger.error(`Unexpected error : ${ err.message }`);
+		return [];
+	}
+
+	if (!fieldMap) {
+		return [];
+	}
+
+	_.map(fieldMap, function(channels, ldapField) {
+		if (!Array.isArray(channels)) {
+			channels = [channels];
+		}
+
+		for (const channel of channels) {
+			let room = Rooms.findOneByNonValidatedName(channel);
+			if (!room) {
+				room = createRoomForSync(channel);
+			}
+			if (isUserInLDAPGroup(ldap, ldapUser, user, ldapField)) {
+				userChannels.push(room._id);
+			} else if (syncUserRolesEnforceAutoChannels) {
+				const subscription = Subscriptions.findOneByRoomIdAndUserId(room._id, user._id);
+				if (subscription) {
+					removeUserFromRoom(room._id, user);
+				}
+			}
+		}
+	});
+
+	return userChannels;
+}
+
+function syncUserAvatar(user, ldapUser) {
+	if (!user?._id || settings.get('LDAP_Sync_User_Avatar') !== true) {
+		return;
+	}
+
+	const avatarField = (settings.get('LDAP_Avatar_Field') || 'thumbnailPhoto').trim();
+	const avatar = ldapUser._raw[avatarField] || ldapUser._raw.thumbnailPhoto || ldapUser._raw.jpegPhoto;
+	if (!avatar) {
+		return;
+	}
+
+	logger.info('Syncing user avatar');
+
+	Meteor.defer(() => {
+		const rs = RocketChatFile.bufferToStream(avatar);
+		const fileStore = FileUpload.getStore('Avatars');
+		fileStore.deleteByName(user.username);
+
+		const file = {
+			userId: user._id,
+			type: 'image/jpeg',
+			size: avatar.length,
+		};
+
+		Meteor.runAsUser(user._id, () => {
+			fileStore.insert(file, rs, (err, result) => {
+				Meteor.setTimeout(function() {
+					Users.setAvatarData(user._id, 'ldap', result.etag);
+					Notifications.notifyLogged('updateAvatar', { username: user.username, etag: result.etag });
+				}, 500);
+			});
+		});
+	});
+}
+
+export function syncUserData(user, ldapUser, ldap) {
 	logger.info('Syncing user data');
 	logger.debug('user', { email: user.email, _id: user._id });
 	logger.debug('ldapUser', ldapUser.object);
 
 	const userData = getDataToSyncUserData(ldapUser, user);
+
+	// Returns a list of Rocket.Chat Groups a user should belong
+	// to if their LDAP group matches the LDAP_Sync_User_Data_GroupsMap
+	const userRoles = mapLdapGroupsToUserRoles(ldap, ldapUser, user);
+
+	// Returns a list of Rocket.Chat Channels a user should belong
+	// to if their LDAP group matches the LDAP_Sync_User_Data_Groups_AutoChannelsMap
+	const userChannels = mapLDAPGroupsToChannels(ldap, ldapUser, user);
+
 	if (user && user._id && userData) {
 		logger.debug('setting', JSON.stringify(userData, null, 2));
 		if (userData.name) {
 			_setRealName(user._id, userData.name);
 			delete userData.name;
 		}
+		userData.customFields = {
+			...user.customFields, ...userData.customFields,
+		};
 		Meteor.users.update(user._id, { $set: userData });
 		user = Meteor.users.findOne({ _id: user._id });
 	}
@@ -201,33 +408,34 @@ export function syncUserData(user, ldapUser) {
 		}
 	}
 
-	if (user && user._id && settings.get('LDAP_Sync_User_Avatar') === true) {
-		const avatar = ldapUser._raw.thumbnailPhoto || ldapUser._raw.jpegPhoto;
-		if (avatar) {
-			logger.info('Syncing user avatar');
-
-			const rs = RocketChatFile.bufferToStream(avatar);
-			const fileStore = FileUpload.getStore('Avatars');
-			fileStore.deleteByName(user.username);
-
-			const file = {
-				userId: user._id,
-				type: 'image/jpeg',
-			};
-
-			Meteor.runAsUser(user._id, () => {
-				fileStore.insert(file, rs, () => {
-					Meteor.setTimeout(function() {
-						Users.setAvatarOrigin(user._id, 'ldap');
-						Notifications.notifyLogged('updateAvatar', { username: user.username });
-					}, 500);
+	if (settings.get('LDAP_Sync_User_Data_Groups') === true) {
+		for (const roleName of userRoles) {
+			const add = Roles.addUserRoles(user._id, roleName);
+			if (settings.get('UI_DisplayRoles') && add) {
+				Notifications.notifyLogged('roles-change', {
+					type: 'added',
+					_id: roleName,
+					u: {
+						_id: user._id,
+						username: user.username,
+					},
 				});
-			});
+			}
+			logger.info('Synced user group', roleName, 'from LDAP for', user.username);
 		}
 	}
+
+	if (settings.get('LDAP_Sync_User_Data_Groups_AutoChannels') === true) {
+		for (const userChannel of userChannels) {
+			addUserToRoom(userChannel, user);
+			logger.info('Synced user channel', userChannel, 'from LDAP for', user.username);
+		}
+	}
+
+	syncUserAvatar(user, ldapUser);
 }
 
-export function addLdapUser(ldapUser, username, password) {
+export function addLdapUser(ldapUser, username, password, ldap) {
 	const uniqueId = getLdapUserUniqueID(ldapUser);
 
 	const userObject = {};
@@ -249,7 +457,7 @@ export function addLdapUser(ldapUser, username, password) {
 	} else if (settings.get('LDAP_Default_Domain') !== '') {
 		userObject.email = `${ username || uniqueId.value }@${ settings.get('LDAP_Default_Domain') }`;
 	} else {
-		const error = new Meteor.Error('LDAP-login-error', 'LDAP Authentication succeded, there is no email to create an account. Have you tried setting your Default Domain in LDAP Settings?');
+		const error = new Meteor.Error('LDAP-login-error', 'LDAP Authentication succeeded, there is no email to create an account. Have you tried setting your Default Domain in LDAP Settings?');
 		logger.error(error);
 		throw error;
 	}
@@ -267,7 +475,7 @@ export function addLdapUser(ldapUser, username, password) {
 		return error;
 	}
 
-	syncUserData(userObject, ldapUser);
+	syncUserData(userObject, ldapUser, ldap);
 
 	return {
 		userId: userObject._id,
@@ -282,6 +490,9 @@ export function importNewUsers(ldap) {
 
 	if (!ldap) {
 		ldap = new LDAP();
+	}
+
+	if (!ldap.connected) {
 		ldap.connectSync();
 	}
 
@@ -319,12 +530,12 @@ export function importNewUsers(ldap) {
 
 				user = Meteor.users.findOne(userQuery);
 				if (user) {
-					syncUserData(user, ldapUser);
+					syncUserData(user, ldapUser, ldap);
 				}
 			}
 
 			if (!user) {
-				addLdapUser(ldapUser, username);
+				addLdapUser(ldapUser, username, undefined, ldap);
 			}
 
 			if (count % 100 === 0) {
@@ -340,7 +551,7 @@ export function importNewUsers(ldap) {
 	}));
 }
 
-function sync() {
+export function sync() {
 	if (settings.get('LDAP_Enable') !== true) {
 		return;
 	}
@@ -370,10 +581,10 @@ function sync() {
 				}
 
 				if (ldapUser) {
-					syncUserData(user, ldapUser);
-				} else {
-					logger.info('Can\'t sync user', user.username);
+					syncUserData(user, ldapUser, ldap);
 				}
+
+				callbacks.run('ldap.afterSyncExistentUser', { ldapUser, user });
 			});
 		}
 	} catch (error) {
@@ -403,7 +614,6 @@ const addCronJob = _.debounce(Meteor.bindEnvironment(function addCronJobDebounce
 				sync();
 			},
 		});
-		SyncedCron.start();
 	}
 }), 500);
 

@@ -3,7 +3,7 @@ import { Meteor } from 'meteor/meteor';
 import { Tracker } from 'meteor/tracker';
 import { ReactiveVar } from 'meteor/reactive-var';
 import { FlowRouter } from 'meteor/kadira:flow-router';
-import { TAPi18n } from 'meteor/tap:i18n';
+import { TAPi18n } from 'meteor/rocketchat:tap-i18n';
 
 import { ChromeScreenShare } from './screenShare';
 import { t } from '../../utils';
@@ -11,7 +11,6 @@ import { Notifications } from '../../notifications';
 import { settings } from '../../settings';
 import { modal } from '../../ui-utils';
 import { ChatSubscription } from '../../models';
-
 import { WEB_RTC_EVENTS } from '..';
 
 class WebRTCTransportClass extends EventEmitter {

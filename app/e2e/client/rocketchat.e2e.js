@@ -4,7 +4,7 @@ import { ReactiveVar } from 'meteor/reactive-var';
 import { Tracker } from 'meteor/tracker';
 import { EJSON } from 'meteor/ejson';
 import { FlowRouter } from 'meteor/kadira:flow-router';
-import { TAPi18n } from 'meteor/tap:i18n';
+import { TAPi18n } from 'meteor/rocketchat:tap-i18n';
 
 import { E2ERoom } from './rocketchat.e2e.room';
 import {
@@ -28,9 +28,7 @@ import { Notifications } from '../../notifications';
 import { Layout, call, modal, alerts } from '../../ui-utils';
 
 import './events.js';
-import './accountEncryption.html';
 import './tabbar';
-import './accountEncryption.js';
 
 let failedToDecodeKey = false;
 let showingE2EAlert = false;
@@ -72,7 +70,7 @@ class E2E {
 			return;
 		}
 
-		if (room.encrypted !== true) {
+		if (room.encrypted !== true && room.e2eKeyId == null) {
 			return;
 		}
 
@@ -104,8 +102,8 @@ class E2E {
 		}
 
 		this.started = true;
-		let public_key = localStorage.getItem('public_key');
-		let private_key = localStorage.getItem('private_key');
+		let public_key = Meteor._localStorage.getItem('public_key');
+		let private_key = Meteor._localStorage.getItem('private_key');
 
 		await this.loadKeysFromDB();
 
@@ -142,13 +140,13 @@ class E2E {
 
 		// TODO: Split in 2 methods to persist keys
 		if (!this.db_public_key || !this.db_private_key) {
-			await call('e2e.setUserPublicAndPivateKeys', {
-				public_key: localStorage.getItem('public_key'),
-				private_key: await this.encodePrivateKey(localStorage.getItem('private_key'), this.createRandomPassword()),
+			await call('e2e.setUserPublicAndPrivateKeys', {
+				public_key: Meteor._localStorage.getItem('public_key'),
+				private_key: await this.encodePrivateKey(Meteor._localStorage.getItem('private_key'), this.createRandomPassword()),
 			});
 		}
 
-		const randomPassword = localStorage.getItem('e2e.randomPassword');
+		const randomPassword = Meteor._localStorage.getItem('e2e.randomPassword');
 		if (randomPassword) {
 			const passwordRevealText = TAPi18n.__('E2E_password_reveal_text', {
 				postProcess: 'sprintf',
@@ -174,7 +172,7 @@ class E2E {
 						if (!confirm) {
 							return;
 						}
-						localStorage.removeItem('e2e.randomPassword');
+						Meteor._localStorage.removeItem('e2e.randomPassword');
 						this.closeAlert();
 					});
 				},
@@ -196,8 +194,8 @@ class E2E {
 			alerts.close();
 		}
 
-		localStorage.removeItem('public_key');
-		localStorage.removeItem('private_key');
+		Meteor._localStorage.removeItem('public_key');
+		Meteor._localStorage.removeItem('private_key');
 		this.instancesByRoomId = {};
 		this.privateKey = null;
 		this.enabled.set(false);
@@ -232,13 +230,13 @@ class E2E {
 	}
 
 	async changePassword(newPassword) {
-		await call('e2e.setUserPublicAndPivateKeys', {
-			public_key: localStorage.getItem('public_key'),
-			private_key: await this.encodePrivateKey(localStorage.getItem('private_key'), newPassword),
+		await call('e2e.setUserPublicAndPrivateKeys', {
+			public_key: Meteor._localStorage.getItem('public_key'),
+			private_key: await this.encodePrivateKey(Meteor._localStorage.getItem('private_key'), newPassword),
 		});
 
-		if (localStorage.getItem('e2e.randomPassword')) {
-			localStorage.setItem('e2e.randomPassword', newPassword);
+		if (Meteor._localStorage.getItem('e2e.randomPassword')) {
+			Meteor._localStorage.setItem('e2e.randomPassword', newPassword);
 		}
 	}
 
@@ -254,12 +252,12 @@ class E2E {
 	}
 
 	async loadKeys({ public_key, private_key }) {
-		localStorage.setItem('public_key', public_key);
+		Meteor._localStorage.setItem('public_key', public_key);
 
 		try {
 			this.privateKey = await importRSAKey(EJSON.parse(private_key), ['decrypt']);
 
-			localStorage.setItem('private_key', private_key);
+			Meteor._localStorage.setItem('private_key', private_key);
 		} catch (error) {
 			return console.error('E2E -> Error importing private key: ', error);
 		}
@@ -278,7 +276,7 @@ class E2E {
 		try {
 			const publicKey = await exportJWKKey(key.publicKey);
 
-			localStorage.setItem('public_key', JSON.stringify(publicKey));
+			Meteor._localStorage.setItem('public_key', JSON.stringify(publicKey));
 		} catch (error) {
 			return console.error('E2E -> Error exporting public key: ', error);
 		}
@@ -286,7 +284,7 @@ class E2E {
 		try {
 			const privateKey = await exportJWKKey(key.privateKey);
 
-			localStorage.setItem('private_key', JSON.stringify(privateKey));
+			Meteor._localStorage.setItem('private_key', JSON.stringify(privateKey));
 		} catch (error) {
 			return console.error('E2E -> Error exporting private key: ', error);
 		}
@@ -300,7 +298,7 @@ class E2E {
 
 	createRandomPassword() {
 		const randomPassword = `${ Random.id(3) }-${ Random.id(3) }-${ Random.id(3) }`.toLowerCase();
-		localStorage.setItem('e2e.randomPassword', randomPassword);
+		Meteor._localStorage.setItem('e2e.randomPassword', randomPassword);
 		return randomPassword;
 	}
 
@@ -483,8 +481,10 @@ class E2E {
 	}
 
 	closeAlert() {
+		if (showingE2EAlert) {
+			alerts.close();
+		}
 		showingE2EAlert = false;
-		alerts.close();
 	}
 }
 
@@ -508,6 +508,14 @@ Meteor.startup(function() {
 	// Encrypt messages before sending
 	promises.add('onClientBeforeSendMessage', async function(message) {
 		if (!message.rid) {
+			return Promise.resolve(message);
+		}
+
+		const room = Rooms.findOne({
+			_id: message.rid,
+		});
+
+		if (!room || room.encrypted !== true) {
 			return Promise.resolve(message);
 		}
 

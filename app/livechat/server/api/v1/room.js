@@ -1,40 +1,45 @@
 import { Meteor } from 'meteor/meteor';
 import { Match, check } from 'meteor/check';
 import { Random } from 'meteor/random';
-import { TAPi18n } from 'meteor/tap:i18n';
+import { TAPi18n } from 'meteor/rocketchat:tap-i18n';
 
 import { settings as rcSettings } from '../../../../settings';
-import { Messages, Rooms } from '../../../../models';
-import { API } from '../../../../api';
-import { findGuest, findRoom, getRoom, settings, findAgent } from '../lib/livechat';
+import { Messages, LivechatRooms } from '../../../../models';
+import { API } from '../../../../api/server';
+import { findGuest, findRoom, getRoom, settings, findAgent, onCheckRoomParams } from '../lib/livechat';
 import { Livechat } from '../../lib/Livechat';
+import { normalizeTransferredByData } from '../../lib/Helper';
+import { findVisitorInfo } from '../lib/visitors';
 
 API.v1.addRoute('livechat/room', {
 	get() {
-		try {
-			check(this.queryParams, {
-				token: String,
-				rid: Match.Maybe(String),
-				agentId: Match.Maybe(String),
-			});
+		const defaultCheckParams = {
+			token: String,
+			rid: Match.Maybe(String),
+			agentId: Match.Maybe(String),
+		};
 
-			const { token } = this.queryParams;
+		const extraCheckParams = onCheckRoomParams(defaultCheckParams);
+
+		try {
+			check(this.queryParams, extraCheckParams);
+
+			const { token, rid: roomId, agentId, ...extraParams } = this.queryParams;
+
 			const guest = findGuest(token);
 			if (!guest) {
 				throw new Meteor.Error('invalid-token');
 			}
 
 			let agent;
-			const { agentId } = this.queryParams;
 			const agentObj = agentId && findAgent(agentId);
 			if (agentObj) {
 				const { username } = agentObj;
 				agent = Object.assign({}, { agentId, username });
 			}
 
-			const rid = this.queryParams.rid || Random.id();
-			const room = getRoom({ guest, rid, agent });
-
+			const rid = roomId || Random.id();
+			const room = Promise.await(getRoom({ guest, rid, agent, extraParams }));
 			return API.v1.success(room);
 		} catch (e) {
 			return API.v1.failure(e);
@@ -104,7 +109,10 @@ API.v1.addRoute('livechat/room.transfer', {
 			// update visited page history to not expire
 			Messages.keepHistoryForToken(token);
 
-			if (!Livechat.transfer(room, guest, { roomId: rid, departmentId: department })) {
+			const { _id, username, name } = guest;
+			const transferredBy = normalizeTransferredByData({ _id, username, name, userType: 'visitor' }, room);
+
+			if (!Promise.await(Livechat.transfer(room, guest, { roomId: rid, departmentId: department, transferredBy }))) {
 				return API.v1.failure();
 			}
 
@@ -156,7 +164,7 @@ API.v1.addRoute('livechat/room.survey', {
 				throw new Meteor.Error('invalid-data');
 			}
 
-			if (!Rooms.updateSurveyFeedbackById(room._id, updateData)) {
+			if (!LivechatRooms.updateSurveyFeedbackById(room._id, updateData)) {
 				return API.v1.failure();
 			}
 
@@ -170,5 +178,40 @@ API.v1.addRoute('livechat/room.survey', {
 API.v1.addRoute('livechat/room.forward', { authRequired: true }, {
 	post() {
 		API.v1.success(Meteor.runAsUser(this.userId, () => Meteor.call('livechat:transfer', this.bodyParams)));
+	},
+});
+
+API.v1.addRoute('livechat/room.visitor', { authRequired: true }, {
+	put() {
+		try {
+			check(this.bodyParams, {
+				rid: String,
+				oldVisitorId: String,
+				newVisitorId: String,
+			});
+
+			const { rid, newVisitorId, oldVisitorId } = this.bodyParams;
+
+			const { visitor } = Promise.await(findVisitorInfo({ userId: this.userId, visitorId: newVisitorId }));
+			if (!visitor) {
+				throw new Meteor.Error('invalid-visitor');
+			}
+
+			let room = LivechatRooms.findOneById(rid, { _id: 1 });
+			if (!room) {
+				throw new Meteor.Error('invalid-room');
+			}
+
+			const { v: { _id: roomVisitorId } = {} } = room;
+			if (roomVisitorId !== oldVisitorId) {
+				throw new Meteor.Error('invalid-room-visitor');
+			}
+
+			room = Livechat.changeRoomVisitor(this.userId, rid, visitor);
+
+			return API.v1.success({ room });
+		} catch (e) {
+			return API.v1.failure(e);
+		}
 	},
 });

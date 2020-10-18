@@ -10,6 +10,17 @@ export class SubscriptionsRaw extends BaseRaw {
 		return this.col.findOne(query, options);
 	}
 
+	countByRoomIdAndUserId(rid, uid) {
+		const query = {
+			rid,
+			'u._id': uid,
+		};
+
+		const cursor = this.col.find(query);
+
+		return cursor.count();
+	}
+
 	isUserInRole(uid, roleName, rid) {
 		if (rid == null) {
 			return;
@@ -22,5 +33,25 @@ export class SubscriptionsRaw extends BaseRaw {
 		};
 
 		return this.findOne(query, { fields: { roles: 1 } });
+	}
+
+	setAsReadByRoomIdAndUserId(rid, uid, alert = false) {
+		const query = {
+			rid,
+			'u._id': uid,
+		};
+
+		const update = {
+			$set: {
+				open: true,
+				alert,
+				unread: 0,
+				userMentions: 0,
+				groupMentions: 0,
+				ls: new Date(),
+			},
+		};
+
+		return this.col.update(query, update);
 	}
 }

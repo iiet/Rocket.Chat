@@ -11,8 +11,8 @@ import { disconnectWorkspace } from './functions/disconnectWorkspace';
 import { syncWorkspace } from './functions/syncWorkspace';
 import { checkUserHasCloudLogin } from './functions/checkUserHasCloudLogin';
 import { userLogout } from './functions/userLogout';
-import { Settings } from '../../models';
 import { hasPermission } from '../../authorization';
+import { buildWorkspaceRegistrationData } from './functions/buildRegistrationData';
 
 Meteor.methods({
 	'cloud:checkRegisterStatus'() {
@@ -26,6 +26,17 @@ Meteor.methods({
 
 		return retrieveRegistrationStatus();
 	},
+	'cloud:getWorkspaceRegisterData'() {
+		if (!Meteor.userId()) {
+			throw new Meteor.Error('error-invalid-user', 'Invalid user', { method: 'cloud:getWorkspaceRegisterData' });
+		}
+
+		if (!hasPermission(Meteor.userId(), 'manage-cloud')) {
+			throw new Meteor.Error('error-not-authorized', 'Not authorized', { method: 'cloud:getWorkspaceRegisterData' });
+		}
+
+		return Buffer.from(JSON.stringify(buildWorkspaceRegistrationData())).toString('base64');
+	},
 	'cloud:registerWorkspace'() {
 		if (!Meteor.userId()) {
 			throw new Meteor.Error('error-invalid-user', 'Invalid user', { method: 'cloud:startRegister' });
@@ -37,28 +48,13 @@ Meteor.methods({
 
 		return startRegisterWorkspace();
 	},
-	'cloud:updateEmail'(email, resend = false) {
-		check(email, String);
-
-		if (!Meteor.userId()) {
-			throw new Meteor.Error('error-invalid-user', 'Invalid user', { method: 'cloud:updateEmail' });
-		}
-
-		if (!hasPermission(Meteor.userId(), 'manage-cloud')) {
-			throw new Meteor.Error('error-not-authorized', 'Not authorized', { method: 'cloud:updateEmail' });
-		}
-
-		Settings.updateValueById('Organization_Email', email);
-
-		return startRegisterWorkspace(resend);
-	},
 	'cloud:syncWorkspace'() {
 		if (!Meteor.userId()) {
-			throw new Meteor.Error('error-invalid-user', 'Invalid user', { method: 'cloud:updateEmail' });
+			throw new Meteor.Error('error-invalid-user', 'Invalid user', { method: 'cloud:syncWorkspace' });
 		}
 
 		if (!hasPermission(Meteor.userId(), 'manage-cloud')) {
-			throw new Meteor.Error('error-not-authorized', 'Not authorized', { method: 'cloud:updateEmail' });
+			throw new Meteor.Error('error-not-authorized', 'Not authorized', { method: 'cloud:syncWorkspace' });
 		}
 
 		return syncWorkspace();
